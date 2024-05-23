@@ -3,26 +3,11 @@ from dotenv import load_dotenv
 load_dotenv()
 import os 
 import gridfs
+from ..db_funcs.utils import * 
 
-def setup():
-    
-    uri = f"mongodb+srv://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@cluster0.8qhxlxg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-    # Create a new client and connect to the server
-    client = MongoClient(uri)
-
-    # Send a ping to confirm a successful connection
-    try:
-        client.admin.command('ping')
-        print("Pinged your deployment. You successfully connected to MongoDB!")
-    except Exception as e:
-        print(e)
-
-    return client
-
-def retrieve_pdf(client, pdf_name):
+def retrieve_pdf(pdf_name):
     # Select the database
-    db = client['mydatabase']
+    db = setup()
     
     # Create a GridFS object
     fs = gridfs.GridFS(db)
@@ -40,9 +25,9 @@ def retrieve_pdf(client, pdf_name):
         return None
 
 
-def store_pdf(client, pdf_path, pdf_name):
-    # Select the database
-    db = client['mydatabase']
+def store_pdf(pdf_path, pdf_name):
+    db = setup()
+
     
     # Create a GridFS object
     fs = gridfs.GridFS(db)
@@ -55,10 +40,23 @@ def store_pdf(client, pdf_path, pdf_name):
         fs.put(file, filename=pdf_name)
         print(f"Stored PDF file '{pdf_name}' successfully.")
 
+def bulk_insert_pdf(files_list):
+    db = setup()
+    
+    # Create a GridFS object
+    fs = gridfs.GridFS(db)
 
-def delete_pdf(client, pdf_name):
-    # Select the database
-    db = client['mydatabase']
+    # Ensure a unique index on the filename field in the fs.files collection
+    db.fs.files.create_index([('filename', 1)], unique=True)
+    for name, path in files_list:
+        # Open the PDF file and store it in GridFS
+        with open(path, 'rb') as file:
+            fs.put(file, filename=name)
+            print(f"Stored PDF file '{name}' successfully.")
+
+def delete_pdf(pdf_name):
+    db = setup()
+
     
     # Create a GridFS object
     fs = gridfs.GridFS(db)
@@ -73,24 +71,37 @@ def delete_pdf(client, pdf_name):
     else:
         print(f"PDF file '{pdf_name}' not found in the database.")
 
+def retrieve_all_pdfs():
+    db = setup()
 
-def empty_database(client):
-    # Select the database
-    db_name = 'mydatabase'
-    db = client[db_name]
+    # Create a GridFS object
+    fs = gridfs.GridFS(db)
     
-    # Drop all collections in the database
-    for collection_name in db.list_collection_names():
-        db.drop_collection(collection_name)
-        print(f"Dropped collection: {collection_name}")
-    
-    print(f"Emptied the database: {db_name}")
+
+    filenames = []
+    file_data = []
+    # Find all files in the fs.files collection
+    for grid_out in fs.find():
+        filename = grid_out.filename
+        filenames.append(filename)
+        file_data.append(grid_out.read())
+    return filenames, file_data
+
+        
 
 
-client = setup()
-# store_pdf(client, '../../Varun_Sahni_Resume.pdf', 'Varun_Sahni_Resume')
-delete_pdf(client, 'Varun_Sahni_Resume')
-content = retrieve_pdf(client, 'Varun_Sahni_Resume')
-# with open('new.pdf', 'wb') as f:
-#     f.write(content)
+
+def populate_pdfs(directory_path):
+    files_list = [(filename, os.path.join(directory_path, filename)) for filename in os.listdir(directory_path)]
+    bulk_insert_pdf(files_list)
+
+
+# store_pdf('autism_handbook.pdf', 'autism_handbook')
+
+# populate_pdfs('pdfs')
+# # store_pdf(client, '../../Varun_Sahni_Resume.pdf', 'Varun_Sahni_Resume')
+# delete_pdf(client, 'Varun_Sahni_Resume')
+# content = retrieve_pdf(client, 'Varun_Sahni_Resume')
+# # with open('new.pdf', 'wb') as f:
+# #     f.write(content)
 
