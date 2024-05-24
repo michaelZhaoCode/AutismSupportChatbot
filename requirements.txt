@@ -1,12 +1,12 @@
 cohere==5.5.1
 Flask==3.0.3
-numpy==1.26.4
+numpy
 pymongo==4.7.2
 PyMuPDF==1.24.4
 PyMuPDFb==1.24.3
 PyPDF2==3.0.1
 python-dotenv==1.0.1
-scikit-learn==1.5.0
-scipy==1.13.1
-sklearn==0.0
+scikit-learn
+scipy
+sklearn
 
