@@ -5,24 +5,27 @@ import os
 import gridfs
 from ..db_funcs.utils import * 
 
-def retrieve_pdf(pdf_name):
+def retrieve_pdfs(pdf_names):
     # Select the database
     db = setup()
     
     # Create a GridFS object
     fs = gridfs.GridFS(db)
+    data = []
+    for pdf_name in pdf_names:
     
-    # Retrieve the file from GridFS
-    file_data = fs.find_one({'filename': pdf_name})
-    
-    if file_data:
-        # Read the file data into memory
-        pdf_content = file_data.read()
-        print(f"Retrieved PDF file '{pdf_name}' successfully.")
-        return pdf_content
-    else:
-        print(f"PDF file '{pdf_name}' not found in the database.")
-        return None
+        # Retrieve the file from GridFS
+        file_data = fs.find_one({'filename': pdf_name})
+        
+        if file_data:
+            # Read the file data into memory
+            pdf_content = file_data.read()
+            print(f"Retrieved PDF file '{pdf_name}' successfully.")
+            data.append(pdf_content)
+        else:
+            print(f"PDF file '{pdf_name}' not found in the database.")
+            return None
+    return data
 
 
 def store_pdf(pdf_path, pdf_name):

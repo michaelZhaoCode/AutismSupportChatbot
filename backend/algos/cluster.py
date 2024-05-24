@@ -26,19 +26,15 @@ def give_closest_cluster(text):
     # shouldnt just attach centroid to embedding bc then need to group clusters evey time during inference instead of just once 
     # more intuitive to store clusters as groupings
     # centroid index when using argmin is different from label, labels can be in any order as they correspond to embeddings
-    new_embedding = np.array(co.embed(texts=text).embeddings[0])
+    new_embedding = np.array(co.embed(texts=[text]).embeddings[0])
     
     cluster = retrieve_cluster()
     centroids = np.array(list(cluster.keys()))
-    for centroid in centroids:
-        for embed in cluster[tuple(centroid)]:
-            print(embed[0])
-
 
     distances = np.linalg.norm(centroids - new_embedding, axis=1)
-    closest_cluster = cluster[tuple(centroids[np.argmin(distances)])]
+    closest_cluster = [value[0] for value in cluster[tuple(centroids[np.argmin(distances)])]]
     return closest_cluster
 
-    
-compute_cluster()
-print(give_closest_cluster(['I am autistic'])[1][0])
+# delete_cluster()
+# compute_cluster()
+# print(give_closest_cluster(['I am autistic'])[1][0])

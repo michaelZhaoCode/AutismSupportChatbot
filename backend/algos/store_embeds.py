@@ -37,6 +37,15 @@ def calc_embeddings():
     embeddings = co.embed(texts=file_texts).embeddings
     data = zip(filenames, embeddings)
     bulk_store_embeddings(data)
+
+def add_pdf(pdf_path, pdf_name):
+    store_pdf(pdf_path, pdf_name)
+    data = retrieve_pdfs([pdf_name])[0]
+    text = [extract_text(data)]
+    embedding = co.embed(texts=text).embeddings[0]
+    store_embeddings(pdf_name, embedding)
+    delete_cluster()
+    compute_cluster()
     
 
 # calc_embeddings()
