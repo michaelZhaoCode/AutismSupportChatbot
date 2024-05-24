@@ -1,14 +1,15 @@
 import numpy as np
 from sklearn.cluster import KMeans
-from ..db_funcs.embed_storage import *
 from ..db_funcs.cluster_storage import *
+from ..algos.embed import *
 import cohere
 
 
 api_key = os.environ["COHERE_API_KEY"]
 co = cohere.Client(api_key)
-def compute_cluster():
-    names, embeddings = retrieve_all_embeddings()
+def compute_cluster(files_list):
+    names, embeddings = retrieve_all_embeddings(files_list)
+    delete_cluster()
 
     # Number of clusters
     num_clusters = 6
@@ -35,6 +36,7 @@ def give_closest_cluster(text):
     closest_cluster = [value[0] for value in cluster[tuple(centroids[np.argmin(distances)])]]
     return closest_cluster
 
+
 # delete_cluster()
-# compute_cluster()
+
 # print(give_closest_cluster(['I am autistic'])[1][0])

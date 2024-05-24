@@ -5,6 +5,8 @@ import os
 import gridfs
 from PyPDF2 import PdfWriter, PdfReader
 import fitz 
+from io import BytesIO
+
 
 
 def setup():
@@ -57,6 +59,28 @@ def create_pdfs(big_pdf_path, output_dir='pdfs'):
         print(f"Created {output_pdf_path}")
 
     pdf_document.close()
+
+def extract_text(pdf_content):
+
+    pdf_stream = BytesIO(pdf_content)
+    
+    # Open the PDF file
+    document = fitz.open(stream=pdf_stream, filetype="pdf")
+
+    
+    # Initialize an empty string to store the extracted text
+    text = ""
+    
+    # Iterate over each page in the PDF
+    for page_num in range(len(document)):
+        page = document.load_page(page_num)  # Load a page
+        text += page.get_text()  # Extract text from the page
+    
+    # Close the document
+    document.close()
+    
+    return text
+
 
 
 # create_pdfs('autism_handbook.pdf')

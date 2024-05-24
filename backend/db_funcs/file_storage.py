@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os 
 import gridfs
-from ..db_funcs.utils import * 
+from ..utils import * 
 
 def retrieve_pdfs(pdf_names):
     # Select the database
@@ -90,18 +90,15 @@ def retrieve_all_pdfs():
         file_data.append(grid_out.read())
     return filenames, file_data
 
-        
+    
 
 
 
-def populate_pdfs(directory_path):
-    files_list = [(filename, os.path.join(directory_path, filename)) for filename in os.listdir(directory_path)]
-    bulk_insert_pdf(files_list)
 
 
 # store_pdf('autism_handbook.pdf', 'autism_handbook')
 
-# populate_pdfs('pdfs')
+
 # # store_pdf(client, '../../Varun_Sahni_Resume.pdf', 'Varun_Sahni_Resume')
 # delete_pdf(client, 'Varun_Sahni_Resume')
 # content = retrieve_pdf(client, 'Varun_Sahni_Resume')
