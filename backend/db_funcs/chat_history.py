@@ -27,7 +27,13 @@ def retrieve_chat_history(username):
     # Check if the document was found
     if document:
         # Return the chat history if available
-        return document['chat_history']
+        history = document['chat_history']
+        formatted_history = []
+        for prompt, answer in history:
+            formatted_history.append({'role': 'USER', 'text': prompt})
+            formatted_history.append({'role': 'CHATBOT', 'text': answer})
+        return formatted_history
+
     else:
         # Return an empty list if no history is found
         print(f"No chat history found for username: {username}")
