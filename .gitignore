@@ -4,3 +4,71 @@ venv/
 pdfs
 pdfs/
 \pdfs
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore Python-related files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pyd
+
+# Ignore virtual environments
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+
+# Ignore IDE-specific files and directories
+# VS Code
+.vscode/
+.vscode/*
+
+# PyCharm
+.idea/
+.idea/*
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore compiled C files
+*.o
+*.a
+*.so
+*.dylib
+
+# Ignore package directories
+site/
+build/
+dist/
+*.egg-info/
+
+# Ignore coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.log
+
+# Ignore logs and databases
+*.log
+*.sqlite
+
+# Ignore other temporary files
+*.swp
+*~
