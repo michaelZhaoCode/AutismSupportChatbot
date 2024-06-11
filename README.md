@@ -11,3 +11,8 @@ Usage:
 6. call `populate_pdfs` to store the files in the db and create a cluster
 7. call `chat` to use the chatbot
 8. if you want to add more files to the db (automatically recomputes the cluster) you can call `add_pdf`
+
+Env information needed:
+1. Cohere API Key
+2. MongoDB User
+3. MongoDB Password

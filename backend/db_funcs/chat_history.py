@@ -1,10 +1,24 @@
-from ..utils import *
+"""
+chat_history.py
+
+This module provides functions to insert and retrieve chat history for users in a MongoDB database.
+"""
+from ..utils import setup
+
+
 # using dict format
-def insert_chat_history(username, new_chat_history):
+def insert_chat_history(username: str, new_chat_history: list[list[str]]) -> None:
+    """
+    Insert or update the chat history for a user in the MongoDB database.
+
+    Args:
+        username (str): The username to associate with the chat history.
+        new_chat_history (list[list[str]]): A list of chat history entries, where each entry is a list containing a
+            prompt and an answer.
+    """
     db = setup()
     history_collection = db['history']
     db.fs.files.create_index([('username', 1)], unique=True)
-
 
     result = history_collection.update_one(
         {'username': username},
@@ -17,7 +31,17 @@ def insert_chat_history(username, new_chat_history):
         print("Existing user updated.")
 
 
-def retrieve_chat_history(username):
+def retrieve_chat_history(username: str) -> list[dict[str, str]]:
+    """
+    Retrieve the chat history for a user from the MongoDB database.
+
+    Args:
+        username (str): The username whose chat history is to be retrieved.
+
+    Returns:
+        list[dict[str, str]]: A list of dictionaries representing the chat history, where each dictionary contains a
+            role ('USER' or 'CHATBOT') and the corresponding text.
+    """
     db = setup()
     history_collection = db['history']
 

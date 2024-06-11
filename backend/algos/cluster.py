@@ -1,14 +1,24 @@
+"""
+cluster.py
+
+This module provides functions to compute clusters for embeddings and to find the closest cluster for a given text.
+"""
 import numpy as np
 from sklearn.cluster import KMeans
-from ..db_funcs.cluster_storage import *
-from ..algos.embed import *
-import cohere
+from embed import retrieve_all_embeddings, retrieve_cluster
+from ..db_funcs.cluster_storage import delete_cluster, store_cluster
+from cohere import Client
 
 
-api_key = os.environ["COHERE_API_KEY"]
-co = cohere.Client(api_key)
-def compute_cluster(files_list):
-    names, embeddings = retrieve_all_embeddings(files_list)
+def compute_cluster(files_list: list[str], co: Client) -> None:
+    """
+    Compute clusters for the given list of files and store them in the MongoDB database.
+
+    Args:
+        files_list (list[str]): List of file names to compute clusters for.
+        co (Client): Cohere client for generating embeddings.
+    """
+    names, embeddings = retrieve_all_embeddings(co, new_files=files_list)
     delete_cluster()
 
     # Number of clusters
@@ -23,19 +33,29 @@ def compute_cluster(files_list):
     centroids = [kmeans.cluster_centers_[i] for i in kmeans.labels_]
     store_cluster(centroids, list(zip(names, embeddings)))
 
-def give_closest_cluster(text):
-    # shouldnt just attach centroid to embedding bc then need to group clusters evey time during inference instead of just once 
-    # more intuitive to store clusters as groupings
-    # centroid index when using argmin is different from label, labels can be in any order as they correspond to embeddings
+
+def give_closest_cluster(text: str, co: Client) -> list[str]:
+    """
+    Find the closest cluster for the given text based on the embeddings.
+
+    Args:
+        text (str): The text to find the closest cluster for.
+        co (Client): Cohere client for generating embeddings.
+
+    Returns:
+        list[str]: List of names in the closest cluster.
+    """
+    # shouldn't just attach centroid to embedding bc then need to group clusters evey time during inference instead of
+    # just once more intuitive to store clusters as groupings centroid index when using argmin is different from
+    # label, labels can be in any order as they correspond to embeddings
     new_embedding = np.array(co.embed(texts=[text]).embeddings[0])
-    
+
     cluster = retrieve_cluster()
     centroids = np.array(list(cluster.keys()))
 
     distances = np.linalg.norm(centroids - new_embedding, axis=1)
     closest_cluster = [value[0] for value in cluster[tuple(centroids[np.argmin(distances)])]]
     return closest_cluster
-
 
 # delete_cluster()
 
