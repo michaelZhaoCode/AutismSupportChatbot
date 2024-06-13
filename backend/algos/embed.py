@@ -3,11 +3,11 @@ embed.py
 
 This module provides functions to retrieve and calculate embeddings for PDF files using Cohere's embedding service.
 """
-from ..db_funcs.file_storage import retrieve_pdfs
-from ..db_funcs.cluster_storage import retrieve_cluster
-from ..utils import extract_text
 from cohere import Client
 
+from db_funcs.file_storage import retrieve_pdfs
+from db_funcs.cluster_storage import retrieve_cluster
+from utils import extract_text
 
 # when user calls insert or bulk insert, we dont need to directly call insert/bulk insert and thats it whatever new
 # files are being added, pass those in when re-computing cluster for eg. for first bulkinsert, retireve cluster (it

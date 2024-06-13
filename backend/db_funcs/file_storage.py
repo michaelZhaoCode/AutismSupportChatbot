@@ -4,7 +4,8 @@ file_storage.py
 This module provides functions to store, retrieve, and delete PDF files in a MongoDB database using GridFS.
 """
 import gridfs
-from ..utils import setup
+
+from utils import setup
 
 
 def retrieve_pdfs(pdf_names: list[str]) -> list[bytes] | None:

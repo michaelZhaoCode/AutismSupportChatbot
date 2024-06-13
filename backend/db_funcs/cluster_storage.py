@@ -4,7 +4,8 @@ cluster_storage.py
 This module provides functions to store, retrieve, and delete clustering data in a MongoDB database.
 """
 from collections import defaultdict
-from ..utils import setup
+
+from utils import setup
 
 
 def store_cluster(centroids: list[list[float]], embeddings_and_names: list[tuple[str, list[float]]]) -> None:
