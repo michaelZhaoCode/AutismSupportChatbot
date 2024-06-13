@@ -5,9 +5,10 @@ This module provides functions to compute clusters for embeddings and to find th
 """
 import numpy as np
 from sklearn.cluster import KMeans
-from embed import retrieve_all_embeddings, retrieve_cluster
-from ..db_funcs.cluster_storage import delete_cluster, store_cluster
 from cohere import Client
+
+from algos.embed import retrieve_all_embeddings, retrieve_cluster
+from db_funcs.cluster_storage import delete_cluster, store_cluster
 
 
 def compute_cluster(files_list: list[str], co: Client) -> None:

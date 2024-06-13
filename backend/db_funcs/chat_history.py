@@ -3,7 +3,7 @@ chat_history.py
 
 This module provides functions to insert and retrieve chat history for users in a MongoDB database.
 """
-from ..utils import setup
+from utils import setup
 
 
 # using dict format

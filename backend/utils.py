@@ -6,10 +6,10 @@ manipulating PDF files, and extracting text from PDFs. The main functionalities
 include setting up the database, emptying the database, creating smaller PDFs
 from a larger one, and extracting text from a PDF content stream.
 """
-
 import os
 import fitz
-from pymongo.mongo_client import MongoClient, Database
+from pymongo.mongo_client import MongoClient
+from pymongo.database import Database
 from dotenv import load_dotenv
 from io import BytesIO
 
@@ -26,7 +26,7 @@ def setup() -> Database:
     """
     load_dotenv()
 
-    uri = f"mongodb+srv://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@cluster0.8qhxlxg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    uri = f"mongodb+srv://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}{os.environ['DB_LINK']}"
 
     # Create a new client and connect to the server
     client = MongoClient(uri)
@@ -115,4 +115,5 @@ def extract_text(pdf_content: bytes) -> str:
 
 
 if __name__ == "__main__":
-    create_pdfs('autism_handbook.pdf')
+    # create_pdfs('autism_handbook.pdf')
+    pass
