@@ -4,12 +4,23 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
-from api.endpoints import populate_pdfs, add_pdf, chat
+from api.chatbot import Chatbot
+from db_funcs.file_storage import PDFStorageInterface
+from db_funcs.chat_history import ChatHistoryInterface
+from db_funcs.cluster_storage import ClusterStorageInterface
+from utils import setup
 
 load_dotenv()
 
 api_key = os.environ["COHERE_API_KEY"]
 co = cohere.Client(api_key)
+
+db = setup()
+chat_history = ChatHistoryInterface(db)
+pdf_storage = PDFStorageInterface(db)
+cluster_storage = ClusterStorageInterface(db)
+
+chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, co)
 
 app = Flask(__name__)
 
@@ -43,7 +54,7 @@ def generate():
             return jsonify({'error': 'Invalid usertype'}), 400
 
         # Call the chat function
-        response = chat(message, username, usertype, co)
+        response = chatbot_obj.chat(message, username, usertype)
 
         return jsonify({'response': response}), 200
 
@@ -53,9 +64,9 @@ def generate():
 
 
 if __name__ == "__main__":
-    # print("Populating database")
-    # populate_pdfs('../pdfs', co)
-    print("Chatting")
-    # print(chat(
-    #     "What is autism?",
-    #     'Michael', usertype="Child", co=co))
+    print("Populating database")
+    chatbot_obj.populate_pdfs('../pdfs')
+    # print("Chatting")
+    # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
+    # print("Cleared")
+    # chatbot_obj.clear_history("Bob")
