@@ -9,7 +9,7 @@ Imports:
 Execution:
     If this module is executed as the main program, it runs the Flask application in debug mode.
 """
-from api import app
+from api.app import app
 
 if __name__ == '__main__':
     app.run(debug=True)

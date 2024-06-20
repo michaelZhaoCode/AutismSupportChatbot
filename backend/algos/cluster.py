@@ -7,11 +7,13 @@ import numpy as np
 from sklearn.cluster import KMeans
 from cohere import Client
 
-from algos.embed import retrieve_all_embeddings, retrieve_cluster
-from db_funcs.cluster_storage import delete_cluster, store_cluster
+from algos.embed import retrieve_all_embeddings
+from db_funcs.cluster_storage import ClusterStorageInterface
+from db_funcs.file_storage import PDFStorageInterface
 
 
-def compute_cluster(files_list: list[str], co: Client) -> None:
+def compute_cluster(files_list: list[str], co: Client, cluster_storage: ClusterStorageInterface,
+                    pdf_storage: PDFStorageInterface) -> None:
     """
     Compute clusters for the given list of files and store them in the MongoDB database.
 
@@ -19,8 +21,9 @@ def compute_cluster(files_list: list[str], co: Client) -> None:
         files_list (list[str]): List of file names to compute clusters for.
         co (Client): Cohere client for generating embeddings.
     """
-    names, embeddings = retrieve_all_embeddings(co, new_files=files_list)
-    delete_cluster()
+    names, embeddings = retrieve_all_embeddings(co, new_files=files_list, cluster_storage=cluster_storage,
+                                                pdf_storage=pdf_storage)
+    cluster_storage.delete_cluster()
 
     # Number of clusters
     num_clusters = 6
@@ -32,10 +35,10 @@ def compute_cluster(files_list: list[str], co: Client) -> None:
     kmeans.fit(embeddings)
 
     centroids = [kmeans.cluster_centers_[i] for i in kmeans.labels_]
-    store_cluster(centroids, list(zip(names, embeddings)))
+    cluster_storage.store_cluster(centroids, list(zip(names, embeddings)))
 
 
-def give_closest_cluster(text: str, co: Client) -> list[str]:
+def give_closest_cluster(text: str, co: Client, cluster_storage: ClusterStorageInterface) -> list[str]:
     """
     Find the closest cluster for the given text based on the embeddings.
 
@@ -51,7 +54,7 @@ def give_closest_cluster(text: str, co: Client) -> list[str]:
     # label, labels can be in any order as they correspond to embeddings
     new_embedding = np.array(co.embed(texts=[text]).embeddings[0])
 
-    cluster = retrieve_cluster()
+    cluster = cluster_storage.retrieve_cluster()
     centroids = np.array(list(cluster.keys()))
 
     distances = np.linalg.norm(centroids - new_embedding, axis=1)
