@@ -64,9 +64,10 @@ def generate():
 
 
 if __name__ == "__main__":
-    print("Populating database")
-    chatbot_obj.populate_pdfs('../pdfs')
+    # print("Populating database")
+    # chatbot_obj.populate_pdfs('../pdfs')
     # print("Chatting")
     # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
-    # print("Cleared")
-    # chatbot_obj.clear_history("Bob")
+    print("Cleared")
+    chatbot_obj.clear_history("Michael")
+    pass

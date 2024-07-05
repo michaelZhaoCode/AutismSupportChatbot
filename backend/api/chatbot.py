@@ -143,7 +143,22 @@ class Chatbot:
         Returns:
             str: The type of response format ('rag' or 'normal').
         """
-        if 'autism' in prompt.lower():
+
+        docs = [
+            "A specialized chatbot only meant to talk about autism related subjects",
+            "A helpful chatbot trained for everyday conversation."
+        ]
+
+        response = self.co.rerank(
+            model="rerank-english-v3.0",
+            query=f"Given the following message, who should the user chat with?\nUser message: {prompt}",
+            documents=docs,
+            return_documents=True
+        )
+
+        selected = response.results[0].document.text
+
+        if 'autism' in selected.lower():
             print("Using RAG chatbot.")
             return 'rag'
         else:
