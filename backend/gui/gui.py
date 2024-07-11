@@ -47,6 +47,8 @@ class ChatInterface(tk.Tk):
 
         self.message_frames = []
 
+        self.tts_buttons = []
+
         ##################
 
         # Frame for new text fields
@@ -121,7 +123,8 @@ class ChatInterface(tk.Tk):
 
         # Button for the second image (image2) on the opposite side of the first image
         button_text = tk.Button(message_frame, text="🔊", bg="white", borderwidth=0, font=("Helvetica", 16),
-                                cursor="hand2", command=lambda: text_to_speech(message))
+                                cursor="hand2", command=lambda: self.start_tts(message))
+        self.tts_buttons.append(button_text)
 
         if side == 'left':
             label_image.pack(side='left', padx=10, pady=10, anchor="n")
@@ -133,6 +136,10 @@ class ChatInterface(tk.Tk):
             label_image.pack(side='right', padx=10, pady=10, anchor="n")
 
         self.message_frames.append(message_frame)
+
+        # Update scroll region and scroll to bottom
+        self.canvas.update_idletasks()
+        self.canvas.yview_moveto(1)
 
     def create_loading(self):
         # Frame for the message
@@ -176,17 +183,35 @@ class ChatInterface(tk.Tk):
             response = send_api_request(message, username, usertype)
             self.remove_last_message()
             self.create_chatbox(response, BOT_IMAGE, side='right')
+        self.send_button.config(state=tk.NORMAL)
 
     def on_send_button_click(self):
         # Disable the send button
         self.send_button.config(state=tk.DISABLED)
         # Run send_message in a separate thread
-        threading.Thread(target=self.send_message_with_reenable).start()
+        threading.Thread(target=self.send_message).start()
 
-    def send_message_with_reenable(self):
-        self.send_message()
-        # Re-enable the send button
-        self.send_button.config(state=tk.NORMAL)
+    def start_tts(self, text):
+        for button in self.tts_buttons:
+            # disable button and change cursor
+            button.config(state=tk.DISABLED, cursor="arrow")
+        thread = threading.Thread(target=self.text_to_speech, args=(text,))
+        thread.start()
+
+    # TODO: different voices, voice constant
+    def text_to_speech(self, text):
+        engine = pyttsx3.init()
+        engine.setProperty('rate', 150)  # Speed of speech
+        engine.setProperty('volume', 1)  # Volume (0.0 to 1.0)
+        engine.say(text)
+        try:
+            engine.runAndWait()
+        except RuntimeError:
+            print("TTS already running")
+        finally:
+            for button in self.tts_buttons:
+                # renable button and change cursor
+                button.config(state=tk.NORMAL, cursor="hand2")
 
 
 class AnimatedGIFLabel(tk.Label):
@@ -227,7 +252,10 @@ def send_api_request(message: str, username: str, usertype: str):
     }
 
     json_data = json.dumps(data)
-    response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
+    try:
+        response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
+    except requests.exceptions.ConnectionError:
+        return "Error, no connection"
     if response.status_code == 200:
         # Print the JSON response from the server
         response_data = response.json()
@@ -238,13 +266,7 @@ def send_api_request(message: str, username: str, usertype: str):
     else:
         # Print the error
         print('Failed to get a valid response:', response.status_code, response.text)
-
-def text_to_speech(text):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 140)  # Speed of speech
-    engine.setProperty('volume', 1)  # Volume (0.0 to 1.0)
-    engine.say(text)
-    engine.runAndWait()
+        return "Error"
 
 
 if __name__ == "__main__":

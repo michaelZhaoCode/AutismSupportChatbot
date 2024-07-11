@@ -116,4 +116,5 @@ def extract_text(pdf_content: bytes) -> str:
 
 if __name__ == "__main__":
     # create_pdfs('autism_handbook.pdf')
+    empty_database()
     pass

@@ -9,3 +9,7 @@ scikit-learn~=1.5.0
 scipy
 flask-cors
 
+# GUI packages
+requests~=2.32.3
+pyttsx3~=2.90
+pillow~=10.4.0
