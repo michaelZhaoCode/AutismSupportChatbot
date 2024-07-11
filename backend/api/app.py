@@ -68,6 +68,6 @@ if __name__ == "__main__":
     # chatbot_obj.populate_pdfs('../pdfs')
     # print("Chatting")
     # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
-    print("Cleared")
-    chatbot_obj.clear_history("Michael")
+    # print("Cleared")
+    chatbot_obj.clear_history("User")
     pass
