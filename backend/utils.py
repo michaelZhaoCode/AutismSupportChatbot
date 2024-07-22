@@ -56,33 +56,36 @@ def empty_database() -> None:
     print(f"Emptied the database")
 
 
-def create_pdfs(big_pdf_path: str, output_dir: str = 'pdfs') -> None:
+def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
     """
-    Split a large PDF into smaller PDFs with two pages each.
+    Chunk a PDF into individual pages in memory.
 
     Args:
-        big_pdf_path (str): The path to the large PDF file.
-        output_dir (str): The directory to save the smaller PDFs. Defaults to 'pdfs'.
+        pdf_path (str): Path to the PDF file to chunk.
+
+    Returns:
+        list: A list of tuples containing chunk names and their byte content.
     """
-    # Ensure the output directory exists
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    pdf_document = fitz.open(pdf_path)
+    big_pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
 
-    # Open the large PDF
-    pdf_document = fitz.open(big_pdf_path)
-
+    chunks = []
     total_pages = pdf_document.page_count
-    for i in range(0, total_pages, 2):
+    for i in range(total_pages):
+        page = pdf_document.load_page(i)
+        if not page.get_text():
+            print(f"Skipping empty page {i + 1}")
+            continue
+
         output_pdf = fitz.open()  # Create a new PDF
-        output_pdf.insert_pdf(pdf_document, from_page=i, to_page=min(i + 1, total_pages - 1))
+        output_pdf.insert_pdf(pdf_document, from_page=i, to_page=i)
 
-        output_pdf_path = os.path.join(output_dir, f"document-page{i // 2 + 1}.pdf")
-        output_pdf.save(output_pdf_path)
-        output_pdf.close()
-
-        print(f"Created {output_pdf_path}")
+        pdf_chunk = output_pdf.write()
+        chunk_name = f"{big_pdf_name}-page{i + 1}.pdf"
+        chunks.append((chunk_name, pdf_chunk))
 
     pdf_document.close()
+    return chunks
 
 
 def extract_text(pdf_content: bytes) -> str:

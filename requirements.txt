@@ -1,4 +1,3 @@
-cohere==5.5.1
 Flask==3.0.3
 numpy~=1.26.4
 pymongo==4.7.2
@@ -8,6 +7,7 @@ python-dotenv==1.0.1
 scikit-learn~=1.5.0
 scipy
 flask-cors
+openai
 
 # GUI packages
 requests~=2.32.3

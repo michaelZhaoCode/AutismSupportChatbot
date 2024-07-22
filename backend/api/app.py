@@ -1,10 +1,12 @@
-import cohere
+# import cohere
 import os
+from openai import OpenAI
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
 from api.chatbot import Chatbot
+from api.gpt_botservice import GPTBotService
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.chat_history import ChatHistoryInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
@@ -12,15 +14,19 @@ from utils import setup
 
 load_dotenv()
 
-api_key = os.environ["COHERE_API_KEY"]
-co = cohere.Client(api_key)
+# api_key = os.environ["COHERE_API_KEY"]
+# co = cohere.Client(api_key)
+
+api_key = os.environ["OPENAI_API_KEY"]
+openai_client = OpenAI(api_key=api_key)
+botservice = GPTBotService(openai_client)
 
 db = setup()
 chat_history = ChatHistoryInterface(db)
 pdf_storage = PDFStorageInterface(db)
 cluster_storage = ClusterStorageInterface(db)
 
-chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, co)
+chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice)
 
 app = Flask(__name__)
 
@@ -66,8 +72,9 @@ def generate():
 if __name__ == "__main__":
     # print("Populating database")
     # chatbot_obj.populate_pdfs('../pdfs')
+    chatbot_obj.add_pdf("../pdfs/autism_handbook.pdf")
     # print("Chatting")
     # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
     # print("Cleared")
-    chatbot_obj.clear_history("User")
+    # chatbot_obj.clear_history("User")
     pass

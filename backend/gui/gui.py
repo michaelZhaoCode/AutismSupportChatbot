@@ -154,6 +154,8 @@ class ChatInterface(tk.Tk):
         label_image = AnimatedGIFLabel(message_frame, LOADING_IMAGE, bg="white")
         label_image.pack(side='right', padx=10, pady=10, anchor="n")
         self.message_frames.append(message_frame)
+        self.canvas.update_idletasks()
+        self.canvas.yview_moveto(1)
 
     def on_frame_configure(self, _):
         """Reset the scroll region to encompass the inner frame"""

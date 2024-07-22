@@ -69,36 +69,17 @@ class PDFStorageInterface:
                 return None
         return data
 
-    def store_pdf(self, pdf_path: str, pdf_name: str) -> None:
+    def store_pdf_chunk(self, pdf_name: str, pdf_chunk: bytes) -> None:
         """
-        Store a single PDF file in the MongoDB database using GridFS.
+        Store a single PDF chunk in the MongoDB database using GridFS.
 
         Args:
-            pdf_path (str): Path to the PDF file to store.
-            pdf_name (str): Name to assign to the stored PDF file.
+            pdf_chunk (bytes): Content of the PDF chunk to store.
+            pdf_name (str): Name to assign to the stored PDF chunk.
         """
-        # Ensure a unique index on the filename field in the fs.files collection
         self.db.fs.files.create_index([('filename', 1)], unique=True)
-
-        # Open the PDF file and store it in GridFS
-        with open(pdf_path, 'rb') as file:
-            self.fs.put(file, filename=pdf_name)
-            print(f"Stored PDF file '{pdf_name}' successfully.")
-
-    def bulk_insert_pdf(self, files_list: list[tuple[str, str]]) -> None:
-        """
-        Store multiple PDF files in the MongoDB database using GridFS.
-
-        Args:
-            files_list (list[tuple[str, str]]): List of tuples containing PDF file names and their paths.
-        """
-        # Ensure a unique index on the filename field in the fs.files collection
-        self.db.fs.files.create_index([('filename', 1)], unique=True)
-        for name, path in files_list:
-            # Open the PDF file and store it in GridFS
-            with open(path, 'rb') as file:
-                self.fs.put(file, filename=name)
-                print(f"Stored PDF file '{name}' successfully.")
+        self.fs.put(pdf_chunk, filename=pdf_name)
+        print(f"Stored PDF chunk '{pdf_name}' successfully.")
 
     def delete_pdf(self, pdf_name: str) -> None:
         """
@@ -140,7 +121,6 @@ if __name__ == "__main__":
 
     datab = setup()
     pdf_storage_interface = PDFStorageInterface(datab)
-    pdf_storage_interface.store_pdf('autism_handbook.pdf', 'autism_handbook')
     print(pdf_storage_interface.retrieve_pdfs(['autism_handbook']))
     pdf_storage_interface.delete_pdf('autism_handbook')
     print(pdf_storage_interface.retrieve_all_pdfs())

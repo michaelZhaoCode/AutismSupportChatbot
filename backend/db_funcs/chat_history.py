@@ -45,14 +45,15 @@ class ChatHistoryInterface:
 
     def retrieve_chat_history(self, username: str) -> list[dict[str, str]]:
         """
-        Retrieve the chat history for a user from the MongoDB database.
+        Retrieve the chat history for a user from the MongoDB database. Note that this is structured to support the
+        OpenAI GPT chat history format.
 
         Args:
             username (str): The username whose chat history is to be retrieved.
 
         Returns:
             list[dict[str, str]]: A list of dictionaries representing the chat history, where each dictionary contains a
-                role ('USER' or 'CHATBOT') and the corresponding text.
+                role ('user' or 'assistant') and the corresponding text.
         """
         history_collection = self.db['history']
 
@@ -66,8 +67,8 @@ class ChatHistoryInterface:
             history = document['chat_history']
             formatted_history = []
             for prompt, answer in history:
-                formatted_history.append({'role': 'USER', 'message': prompt})
-                formatted_history.append({'role': 'CHATBOT', 'message': answer})
+                formatted_history.append({'role': 'user', 'content': prompt})
+                formatted_history.append({'role': 'assistant', 'content': answer})
             return formatted_history
 
         else:
