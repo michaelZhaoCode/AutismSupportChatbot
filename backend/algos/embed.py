@@ -1,10 +1,9 @@
 """
 embed.py
 
-This module provides functions to retrieve and calculate embeddings for PDF files using Cohere's embedding service.
+This module provides functions to retrieve and calculate embeddings for PDF files using the BotService.
 """
-from cohere import Client
-
+from api.botservice import BotService
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import extract_text
@@ -17,7 +16,7 @@ from utils import extract_text
 # whenever adding files, cluster also recomputed with new files embeddigns calculated
 
 def retrieve_all_embeddings(
-        co: Client,
+        botservice: BotService,
         pdf_storage: PDFStorageInterface,
         cluster_storage: ClusterStorageInterface,
         new_files: list[str] = None,
@@ -27,7 +26,7 @@ def retrieve_all_embeddings(
     Retrieve all embeddings, optionally including new files. If new files are added, re-compute the cluster.
 
     Args:
-        co (Client): Cohere client for generating embeddings.
+        botservice (BotService): BotService instance for generating embeddings.
         pdf_storage (PDFStorageInterface): The PDF storage interface instance.
         cluster_storage (ClusterStorageInterface): The cluster storage interface instance.
         new_files (list[str], optional): List of new file names to include in the embeddings. Defaults to None.
@@ -47,7 +46,7 @@ def retrieve_all_embeddings(
             names.append(name)
             embeddings.append(embedding)
     if is_insert:
-        new_embeddings = calc_embeddings(new_files, co, pdf_storage)
+        new_embeddings = calc_embeddings(new_files, botservice, pdf_storage)
         names.extend(new_files)
         embeddings.extend(new_embeddings)
     else:
@@ -57,17 +56,17 @@ def retrieve_all_embeddings(
         for name in names:
             if name not in files_set:
                 new_names.append(name)
-                new_embeddings.append(calc_embeddings([name], co, pdf_storage)[0])
+                new_embeddings.append(calc_embeddings([name], botservice, pdf_storage)[0])
     return names, embeddings
 
 
-def calc_embeddings(file_names: list[str], co: Client, pdf_storage: PDFStorageInterface) -> list[list[float]]:
+def calc_embeddings(file_names: list[str], botservice: BotService, pdf_storage: PDFStorageInterface) -> list[list[float]]:
     """
-    Calculate embeddings for the given list of file names using Cohere's embedding service.
+    Calculate embeddings for the given list of file names using the BotService.
 
     Args:
         file_names (list[str]): List of file names to calculate embeddings for.
-        co (Client): Cohere client for generating embeddings.
+        botservice (BotService): BotService instance for generating embeddings.
         pdf_storage (PDFStorageInterface): The PDF storage interface instance.
 
     Returns:
@@ -75,5 +74,5 @@ def calc_embeddings(file_names: list[str], co: Client, pdf_storage: PDFStorageIn
     """
     file_content = pdf_storage.retrieve_pdfs(file_names)
     file_texts = [extract_text(content) for content in file_content]
-    embeddings = co.embed(texts=file_texts).embeddings
+    embeddings = botservice.embed(texts=file_texts)
     return embeddings
