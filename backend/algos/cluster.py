@@ -5,6 +5,7 @@ This module provides functions to compute clusters for embeddings and to find th
 """
 import numpy as np
 from sklearn.cluster import KMeans
+from math import sqrt
 
 from api.botservice import BotService
 from algos.embed import retrieve_all_embeddings
@@ -26,7 +27,8 @@ def compute_cluster(files_list: list[str], botservice: BotService, cluster_stora
     cluster_storage.delete_cluster()
 
     # Number of clusters
-    num_clusters = len(files_list) // 3
+    # set to the square root of files in the database
+    num_clusters = round(sqrt(len(names)))
 
     # Create KMeans model
     kmeans = KMeans(n_clusters=num_clusters, random_state=42)
