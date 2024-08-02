@@ -16,6 +16,7 @@ class BotService(ABC):
     - chat(message): Processes the input message and returns the bot's response.
     - choose(options): Selects an option from a list of options and returns the chosen option.
     """
+
     @abstractmethod
     def embed(self, texts: list[str]) -> list[list[float]]:
         """
@@ -30,7 +31,13 @@ class BotService(ABC):
         pass
 
     @abstractmethod
-    def chat(self, message: str, model: str, documents: dict[str, str], chat_history: list[dict[str, str]]) -> str:
+    def chat(
+            self,
+            message: str,
+            model: str,
+            chat_history: list[dict[str, str]],
+            documents: list[dict[str, str]] | None = None
+    ) -> str:
         """
         Abstract method for chatting with the bot.
 

@@ -60,7 +60,8 @@ def retrieve_all_embeddings(
     return names, embeddings
 
 
-def calc_embeddings(file_names: list[str], botservice: BotService, pdf_storage: PDFStorageInterface) -> list[list[float]]:
+def calc_embeddings(file_names: list[str], botservice: BotService, pdf_storage: PDFStorageInterface) -> list[
+        list[float]]:
     """
     Calculate embeddings for the given list of file names using the BotService.
 
