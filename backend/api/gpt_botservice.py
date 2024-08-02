@@ -41,15 +41,20 @@ class GPTBotService(BotService):
 
         return [embedding_obj.embedding for embedding_obj in response.data]
 
-    def chat(self, message: str, model: str,
-             chat_history: list[dict[str, str]], documents: list[dict[str, str]] | None = None) -> str:
+    def chat(
+            self,
+            message: str,
+            model: str,
+            chat_history: list[dict[str, str]],
+            documents: list[dict[str, str]] | None = None
+    ) -> str:
         """
         Processes the input message and returns the bot's response using a GPT-based model.
 
         Parameters:
         message: The input message to the bot.
         model: The GPT model to be used for generating the response.
-        documents: A dictionary of documents to be used as context.
+        documents: A list of document dictiona to be used as context.
         chat_history: The history of the chat for context.
 
         Returns:

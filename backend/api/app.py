@@ -72,9 +72,9 @@ def generate():
 if __name__ == "__main__":
     # print("Populating database")
     # chatbot_obj.populate_pdfs('../pdfs')
-    chatbot_obj.add_pdf("../pdfs/autism_handbook.pdf")
+    # chatbot_obj.add_pdf("../pdfs/autism_handbook.pdf")
     # print("Chatting")
     # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
-    # print("Cleared")
-    # chatbot_obj.clear_history("User")
+    print("Cleared")
+    chatbot_obj.clear_history("User")
     pass

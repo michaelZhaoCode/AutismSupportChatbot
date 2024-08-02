@@ -1,0 +1,3 @@
+You have been provided a list of service locations that the user wishes to use. Respond to them.
+For formatting, do not include markdown formatting in your response and make it easy to read as a plaintext chat message.
+User message: {}
