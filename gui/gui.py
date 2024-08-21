@@ -10,6 +10,7 @@ import pyttsx3
 
 DEFAULT_NAME = "User"
 DEFAULT_TYPE = "Adult"
+DEFAULT_LOCATION = ""
 
 USER_IMAGE = "user.png"
 BOT_IMAGE = "chatbot.png"
@@ -42,8 +43,8 @@ class ChatInterface(tk.Tk):
         self.canvas_window = self.canvas.create_window((0, 0), window=self.chat_frame, anchor="nw")
 
         # Method ensures that the canvas frame adjusts its size
-        self.canvas.bind("<Configure>", self.on_canvas_configure)
-        self.chat_frame.bind("<Configure>", self.on_frame_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.chat_frame.bind("<Configure>", self._on_frame_configure)
 
         self.message_frames = []
 
@@ -66,6 +67,12 @@ class ChatInterface(tk.Tk):
         self.usertype_label.grid(row=1, column=0, padx=5, pady=5)
         self.usertype_entry = ttk.Entry(self.info_frame, font=("Helvetica", 14))
         self.usertype_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        # Location field
+        self.location_label = ttk.Label(self.info_frame, text="Location:", font=("Helvetica", 14))
+        self.location_label.grid(row=0, column=2, padx=5, pady=5)
+        self.location_entry = ttk.Entry(self.info_frame, font=("Helvetica", 14))
+        self.location_entry.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
 
         # Frame for entry box and send button
         self.entry_frame = ttk.Frame(self)
@@ -141,7 +148,7 @@ class ChatInterface(tk.Tk):
         self.canvas.update_idletasks()
         self.canvas.yview_moveto(1)
 
-    def create_loading(self):
+    def _create_loading(self):
         # Frame for the message
         message_frame = tk.Frame(self.chat_frame, bg="white")
 
@@ -157,33 +164,34 @@ class ChatInterface(tk.Tk):
         self.canvas.update_idletasks()
         self.canvas.yview_moveto(1)
 
-    def on_frame_configure(self, _):
+    def _on_frame_configure(self, _):
         """Reset the scroll region to encompass the inner frame"""
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-    def on_canvas_configure(self, event):
+    def _on_canvas_configure(self, event):
         # Update the scroll region to encompass the inner frame
         canvas_width = event.width
         self.canvas.itemconfig(self.canvas_window, width=canvas_width)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-    def remove_last_message(self):
+    def _remove_last_message(self):
         if self.message_frames:  # Ensure there's a message to remove
             last_frame = self.message_frames.pop()  # Get the last frame
             last_frame.destroy()  # Remove it from the display
 
-    def send_message(self):
+    def _send_message(self):
         message = self.message_entry.get("1.0", tk.END).strip()
         username = self.username_entry.get().strip() or DEFAULT_NAME
         usertype = self.usertype_entry.get().strip() or DEFAULT_TYPE
+        location = self.location_entry.get().strip() or DEFAULT_LOCATION
         if message:
             self.create_chatbox(message, USER_IMAGE, side='left')
             print(f"Sent message: {message}")
             self.message_entry.delete("1.0", tk.END)
             time.sleep(LOADING_DELAY)
-            self.create_loading()
-            response = send_api_request(message, username, usertype)
-            self.remove_last_message()
+            self._create_loading()
+            response = send_api_request(message, username, usertype, location)
+            self._remove_last_message()
             self.create_chatbox(response, BOT_IMAGE, side='right')
         self.send_button.config(state=tk.NORMAL)
 
@@ -191,17 +199,17 @@ class ChatInterface(tk.Tk):
         # Disable the send button
         self.send_button.config(state=tk.DISABLED)
         # Run send_message in a separate thread
-        threading.Thread(target=self.send_message).start()
+        threading.Thread(target=self._send_message).start()
 
     def start_tts(self, text):
         for button in self.tts_buttons:
             # disable button and change cursor
             button.config(state=tk.DISABLED, cursor="arrow")
-        thread = threading.Thread(target=self.text_to_speech, args=(text,))
+        thread = threading.Thread(target=self._text_to_speech, args=(text,))
         thread.start()
 
     # TODO: different voices, voice constant
-    def text_to_speech(self, text):
+    def _text_to_speech(self, text):
         engine = pyttsx3.init()
         engine.setProperty('rate', 150)  # Speed of speech
         engine.setProperty('volume', 1)  # Volume (0.0 to 1.0)
@@ -244,13 +252,14 @@ class AnimatedGIFLabel(tk.Label):
         self.master.after(100, self.animate)  # Adjust the frame delay as needed
 
 
-def send_api_request(message: str, username: str, usertype: str):
+def send_api_request(message: str, username: str, usertype: str, location: str):
     url = 'http://127.0.0.1:5000/generate'
 
     data = {
         'username': username,
         'message': message,
-        'usertype': usertype
+        'usertype': usertype,
+        'location': location
     }
 
     json_data = json.dumps(data)

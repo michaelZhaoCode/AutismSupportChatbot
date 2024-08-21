@@ -4,11 +4,13 @@ to chat with the bot and choose services from a list of available services.
 """
 
 import os
+import random
 import openpyxl
 
 from constants import SERVICE_MODEL_USE
 from constants import MAX_SERVICES
 from api.botservice import BotService
+from api.locationhandler import LocationHandler
 
 
 class ServiceHandler:
@@ -17,7 +19,7 @@ class ServiceHandler:
     to chat with the bot and choose services from a list of available services.
     """
 
-    def __init__(self, botservice: BotService):
+    def __init__(self, botservice: BotService, location_handler: LocationHandler):
         """
         Initializes the ServiceHandler with a BotService instance and loads the list of available services.
 
@@ -25,6 +27,7 @@ class ServiceHandler:
         botservice (BotService): An instance of a class derived from BotService.
         """
         self.botservice = botservice
+        self.location_handler = location_handler
         self._load_services()
 
     def _load_services(self):
@@ -79,52 +82,74 @@ class ServiceHandler:
         str: The chosen service filename.
         """
         query = f"Based on this user message, what type of service do they require? User message: {user_message}"
-        choice = self.botservice.choose(self.service_list, query, model=SERVICE_MODEL_USE)
+        choice = self.botservice.choose(self.service_list, query, model=SERVICE_MODEL_USE)[0]
         print(f"Chosen service: {choice}")
         return choice
 
-    def get_response(self, user_message: str) -> str:
+    def get_response(self, user_message: str, location: str) -> str:
         """
-        Gets the bot's response by first choosing an appropriate service based on the user's message and
-        then loading the corresponding .xlsx sheet to use its contents as the document.
+        Generates the bot's response by selecting a relevant service based on the user's message
+        and utilizing the contents of the corresponding .xlsx file, if applicable, as part of the response.
+
+        The function first chooses an appropriate service by interpreting the user's message. If the chosen
+        service corresponds to an .xlsx file, the content of the file is loaded and used as a document in
+        the bot's response generation. If no location is provided, random service data will be selected.
 
         Parameters:
-        user_message (str): The message from the user.
+        user_message (str): The input message from the user, used to determine the appropriate service.
+        location (str): The location provided by the user to assist in filtering service data.
 
         Returns:
-        str: The response from the bot.
+        str: The generated response from the bot after processing the user's message and the relevant document.
         """
         chosen_service = self.choose_service(user_message)
         service_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'services', chosen_service)
 
         document = {"title": f"Known providers of {chosen_service}"}
         if chosen_service.endswith('.xlsx'):
-            document['contents'] = self._load_xlsx(service_path)
+            document['contents'] = self._get_service_locations(service_path, location)
         else:
             document['contents'] = ""
 
         prompt = self._load_prompt().format(user_message)
         response = self.botservice.chat(prompt, model=SERVICE_MODEL_USE, documents=[document], chat_history=[])
-        # Remove markdown bold
+        # Remove Markdown bold
         return response.replace("**", "")
 
-    @staticmethod
-    def _load_xlsx(filepath: str) -> str:
+    def _get_service_locations(self, filepath: str, location: str) -> str:
         """
-        Loads the contents of an .xlsx file into a single string.
+        Loads the contents of an .xlsx file into a single string, selecting the closest services
+        based on the provided location or random services if no location is provided.
 
         Parameters:
         filepath (str): The path to the .xlsx file.
+        location (str, optional): The location string to compare services against.
 
         Returns:
-        str: A single string containing the concatenated content of the .xlsx file.
+        str: A single string containing the concatenated content of the selected services.
         """
         wb = openpyxl.load_workbook(filepath)
+        sheet = wb.active
+
+        # Extract all addresses from the "Address" column
+        rows = list(sheet.iter_rows(values_only=True))
+        headers = rows[0]  # Assuming the first row is the header
+        address_index = headers.index("Address")
+        addresses = [row[address_index] for row in rows[1:]]
+
+        # Determine whether to use location-based filtering or random selection
+        if location:
+            # Use the location_handler to find the closest services
+            closest_addresses = self.location_handler.find_closest(addresses, location, MAX_SERVICES)
+        else:
+            # If no location is provided, pick random addresses
+            closest_addresses = random.sample(addresses, min(MAX_SERVICES, len(addresses)))
+
+        # Build content string for the selected services
         content = ""
-        for sheet in wb:
-            rows = list(sheet.iter_rows(values_only=True))
-            headers = rows[0]
-            for row in rows[1:MAX_SERVICES + 1]:
+        for row in rows[1:]:
+            if row[address_index] in closest_addresses:
                 row_content = ", ".join(f"{headers[i]}: {value}" for i, value in enumerate(row))
                 content += row_content + " \n\n"
+
         return content

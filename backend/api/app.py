@@ -1,4 +1,3 @@
-# import cohere
 import os
 from openai import OpenAI
 from flask import Flask, request, jsonify
@@ -6,27 +5,28 @@ from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
 from api.chatbot import Chatbot
-from api.gpt_botservice import GPTBotService
+from api.botservice.gpt_botservice import GPTBotService
+from api.servicehandler import ServiceHandler
+from api.locationhandler.botservicelocationhandler import BotServiceLocationHandler
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.chat_history import ChatHistoryInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
-from utils import setup
+from utils import setup_mongo_db
 
 load_dotenv()
-
-# api_key = os.environ["COHERE_API_KEY"]
-# co = cohere.Client(api_key)
 
 api_key = os.environ["OPENAI_API_KEY"]
 openai_client = OpenAI(api_key=api_key)
 botservice = GPTBotService(openai_client)
 
-db = setup()
-chat_history = ChatHistoryInterface(db)
-pdf_storage = PDFStorageInterface(db)
-cluster_storage = ClusterStorageInterface(db)
+mongo_db = setup_mongo_db()
+chat_history = ChatHistoryInterface(mongo_db)
+pdf_storage = PDFStorageInterface(mongo_db)
+cluster_storage = ClusterStorageInterface(mongo_db)
+location_handler = BotServiceLocationHandler(botservice)
+service_handler = ServiceHandler(botservice, location_handler)
 
-chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice)
+chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice, service_handler)
 
 app = Flask(__name__)
 
@@ -76,5 +76,5 @@ if __name__ == "__main__":
     # print("Chatting")
     # print(chatbot_obj.chat("Hello", "Bob", "Adult"))
     print("Cleared")
-    chatbot_obj.clear_history("User")
+    chatbot_obj.clear_history("Michael")
     pass

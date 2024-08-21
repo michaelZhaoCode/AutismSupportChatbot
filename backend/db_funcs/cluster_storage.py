@@ -85,9 +85,9 @@ class ClusterStorageInterface:
 
 
 if __name__ == "__main__":
-    from utils import setup
+    from utils import setup_mongo_db
 
-    database = setup()
+    database = setup_mongo_db()
     print("Deleting cluster.")
     cluster_storage_interface = ClusterStorageInterface(database)
     cluster_storage_interface.delete_cluster()

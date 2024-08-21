@@ -2,4 +2,6 @@
 
 MAIN_MODEL_USE = "gpt-4o"
 SERVICE_MODEL_USE = "gpt-4o-mini"
+LOCATION_MODEL_USE = "gpt-4o"
+
 MAX_SERVICES = 5

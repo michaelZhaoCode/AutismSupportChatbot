@@ -54,7 +54,7 @@ class GPTBotService(BotService):
         Parameters:
         message: The input message to the bot.
         model: The GPT model to be used for generating the response.
-        documents: A list of document dictiona to be used as context.
+        documents: A list of document dictionaries to be used as context.
         chat_history: The history of the chat for context.
 
         Returns:
@@ -77,7 +77,7 @@ class GPTBotService(BotService):
 
         return response.choices[0].message.content
 
-    def choose(self, options: list[str], query: str, model: str) -> str:
+    def choose(self, options: list[str], query: str, model: str, n: int = 1) -> list[str]:
         """
         Selects an option from a list of options using a GPT-based model.
 
@@ -85,12 +85,17 @@ class GPTBotService(BotService):
         options: A list of options to choose from.
         query: The query to determine the choice.
         model: The GPT model to be used for making the choice.
+        n: The amount of options to choose from
 
         Returns:
-        The chosen option.
+        The n chosen options.
         """
-        instruct = ("You are to select an option that best fits the query given to you. Respond only with one of the "
-                    "options provided.")
+        if n == 1:
+            instruct = ("You are to select an option that best fits the query given to you. Respond only with one of "
+                        "the options provided.")
+        else:
+            instruct = (f"You are to select the top {n} options that best fit the query given to you. Respond only "
+                        f"with your chosen options out of those provided, each on new lines.")
         chat_history = [
             {"role": "system", "content": instruct}
         ]
@@ -104,4 +109,6 @@ class GPTBotService(BotService):
             messages=chat_history
         )
 
-        return response.choices[0].message.content
+        print(response.choices[0].message.content)
+
+        return response.choices[0].message.content.split('\n')

@@ -117,9 +117,9 @@ class PDFStorageInterface:
 
 # Example usage:
 if __name__ == "__main__":
-    from utils import setup
+    from utils import setup_mongo_db
 
-    datab = setup()
+    datab = setup_mongo_db()
     pdf_storage_interface = PDFStorageInterface(datab)
     print(pdf_storage_interface.retrieve_pdfs(['autism_handbook']))
     pdf_storage_interface.delete_pdf('autism_handbook')
