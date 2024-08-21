@@ -1,8 +1,9 @@
 """
 chatbot.py
 
-This module provides a Chatbot class for handling chat interactions, adding PDF files, and populating PDF files from a
-directory. The Chatbot class leverages clustering and embedding functionalities to enhance responses using the BotService.
+This module provides a Chatbot class for handling chat interactions, adding PDF files, and populating PDF
+files from a directory. The Chatbot class leverages clustering and embedding functionalities to
+enhance responses using the BotService.
 """
 
 import os
@@ -34,7 +35,8 @@ class Chatbot:
             pdf_storage: PDFStorageInterface,
             chat_history: ChatHistoryInterface,
             cluster_storage: ClusterStorageInterface,
-            botservice: BotService
+            botservice: BotService,
+            service_handler: ServiceHandler
     ):
         """
         Initializes the Chatbot with the given interfaces and BotService instance.
@@ -49,7 +51,7 @@ class Chatbot:
         self.chat_history = chat_history
         self.cluster_storage = cluster_storage
         self.botservice = botservice
-        self.service_handler = ServiceHandler(self.botservice)
+        self.service_handler = service_handler
 
     @staticmethod
     def _load_prompt(user_type: str, response_type: str) -> str:
@@ -141,7 +143,7 @@ class Chatbot:
             model=MAIN_MODEL_USE,
             query=f"Given the following user message, who should the user chat with?\nUser message: {prompt}",
             options=options,
-        )
+        )[0]
 
         # DEBUGGING PURPOSES
         # print(selected)
@@ -159,7 +161,7 @@ class Chatbot:
             print("Using normal chatbot.")
             return 'normal'
 
-    def chat(self, prompt: str, username: str, usertype: str) -> str:
+    def chat(self, prompt: str, username: str, usertype: str, location: str = "") -> str:
         """
         Generate a chat response based on the given prompt and user's chat history.
 
@@ -175,9 +177,9 @@ class Chatbot:
         choice = self._classify(prompt)
 
         if choice == "service":
-            response = self.service_handler.get_response(prompt)
+            response = self.service_handler.get_response(prompt, location)
         else:
-            response = self._generate(prompt, username, usertype, choice)
+            response = self._generate(prompt, username, usertype, choice).replace("**", "")
 
         self.chat_history.insert_chat_history(username, [[prompt, response]])
         return response

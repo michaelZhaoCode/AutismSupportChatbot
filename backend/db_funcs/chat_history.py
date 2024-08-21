@@ -94,9 +94,9 @@ class ChatHistoryInterface:
 
 # Example usage:
 if __name__ == "__main__":
-    from utils import setup
+    from utils import setup_mongo_db
 
-    db = setup()
+    db = setup_mongo_db()
     chat_history_interface = ChatHistoryInterface(db)
     chat_history_interface.insert_chat_history('boss', [['hi', 'yes']])
     chat_history_interface.insert_chat_history('boss', [['s', 'yes'], ['a', 'aaaa']])

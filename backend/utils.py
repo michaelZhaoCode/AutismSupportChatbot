@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from io import BytesIO
 
 
-def setup() -> Database:
+def setup_mongo_db() -> Database:
     """
     Sets up the MongoDB connection using environment variables and returns the database instance.
 
@@ -46,7 +46,7 @@ def empty_database() -> None:
     Drop all collections in the MongoDB database.
     """
     # Select the database
-    db = setup()
+    db = setup_mongo_db()
 
     # Drop all collections in the database
     for collection_name in db.list_collection_names():
