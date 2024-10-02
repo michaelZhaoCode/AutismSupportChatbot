@@ -38,6 +38,8 @@ class ChatHistoryInterface:
             {'$push': {'chat_history': {'$each': new_chat_history}}},
             upsert=True
         )
+        # TODO: add logging
+
         if result.matched_count == 0:
             print(f"New user added: {username}.")
         else:
@@ -59,6 +61,7 @@ class ChatHistoryInterface:
 
         # Find the document for the given username
         document = history_collection.find_one({'username': username})
+        # TODO: add logging
 
         # Check if the document was found
         if document:

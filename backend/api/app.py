@@ -14,6 +14,7 @@ from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import setup_mongo_db
 
 load_dotenv()
+# TODO: add logging of creation
 
 api_key = os.environ["OPENAI_API_KEY"]
 openai_client = OpenAI(api_key=api_key)
@@ -45,6 +46,7 @@ def index():
 def generate():
     try:
         data = request.get_json()
+        # TODO: add logging
 
         # Validate required keys
         if not all(key in data for key in ('username', 'message', 'usertype')):

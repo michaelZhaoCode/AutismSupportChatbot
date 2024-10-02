@@ -33,6 +33,8 @@ class GPTBotService(BotService):
         Returns:
         The embedded representation of the texts.
         """
+        # TODO: add logging
+
 
         response = self.openai_client.embeddings.create(
             input=texts,
@@ -60,6 +62,8 @@ class GPTBotService(BotService):
         Returns:
         The response from the bot.
         """
+        # TODO: add logging
+
         context_str = ""
         if documents:
             context_str += "Here are some documents to use as context for your response:\n"
@@ -90,6 +94,8 @@ class GPTBotService(BotService):
         Returns:
         The n chosen options.
         """
+        # TODO: add logging
+
         if n == 1:
             instruct = ("You are to select an option that best fits the query given to you. Respond only with one of "
                         "the options provided.")
