@@ -47,6 +47,7 @@ class ClusterStorageInterface:
                 corresponding embedding.
         """
         clusters_collection = self.db['clusters']
+        # TODO: add logging
 
         cluster = defaultdict(list)
         for i in range(len(centroids)):
@@ -71,6 +72,8 @@ class ClusterStorageInterface:
         Returns: dict[tuple[float, ...], list[tuple[str, list[float]]]]: A dictionary where the keys are centroids
             and the values are lists of tuples containing names and embeddings.
         """
+        # TODO: add logging
+
         clusters_collection = self.db['clusters']
 
         cluster = {tuple(document['centroid']): document['embedding_and_name'] for document in
@@ -81,6 +84,8 @@ class ClusterStorageInterface:
         """
         Delete the clustering data from the MongoDB database.
         """
+        # TODO: add logging
+
         self.db.drop_collection('clusters')
 
 

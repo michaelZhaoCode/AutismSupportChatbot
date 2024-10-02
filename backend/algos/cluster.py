@@ -38,6 +38,7 @@ def compute_cluster(files_list: list[str], botservice: BotService, cluster_stora
 
     centroids = [kmeans.cluster_centers_[i] for i in kmeans.labels_]
     cluster_storage.store_cluster(centroids, list(zip(names, embeddings)))
+    # TODO: add logging
 
 
 def give_closest_cluster(text: str, botservice: BotService, cluster_storage: ClusterStorageInterface) -> list[str]:
@@ -61,6 +62,8 @@ def give_closest_cluster(text: str, botservice: BotService, cluster_storage: Clu
 
     distances = np.linalg.norm(centroids - new_embedding, axis=1)
     closest_cluster = [value[0] for value in cluster[tuple(centroids[np.argmin(distances)])]]
+    # TODO: add logging
+
     return closest_cluster
 
 # delete_cluster()

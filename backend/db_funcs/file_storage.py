@@ -58,6 +58,7 @@ class PDFStorageInterface:
         for pdf_name in pdf_names:
             # Retrieve the file from GridFS
             file_data = self.fs.find_one({'filename': pdf_name})
+            # TODO: add logging
 
             if file_data:
                 # Read the file data into memory
@@ -79,6 +80,8 @@ class PDFStorageInterface:
         """
         self.db.fs.files.create_index([('filename', 1)], unique=True)
         self.fs.put(pdf_chunk, filename=pdf_name)
+        # TODO: add logging
+
         print(f"Stored PDF chunk '{pdf_name}' successfully.")
 
     def delete_pdf(self, pdf_name: str) -> None:
@@ -105,6 +108,7 @@ class PDFStorageInterface:
         Returns:
             tuple[list[str], list[bytes]]: A tuple containing a list of filenames and their corresponding file contents.
         """
+
         filenames = []
         file_data = []
         # Find all files in the fs.files collection

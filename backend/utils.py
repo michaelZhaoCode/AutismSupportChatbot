@@ -35,6 +35,7 @@ def setup_mongo_db() -> Database:
     try:
         client.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")
+        # TODO: add logging
     except Exception as e:
         print(e)
     db = client['mydatabase']
@@ -71,6 +72,8 @@ def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
 
     chunks = []
     total_pages = pdf_document.page_count
+    # TODO: add logging
+
     for i in range(total_pages):
         page = pdf_document.load_page(i)
         if not page.get_text():

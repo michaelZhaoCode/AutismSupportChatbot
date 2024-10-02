@@ -37,6 +37,8 @@ class ServiceHandler:
         Returns:
         list[str]: A list of filenames representing available services.
         """
+        # TODO: add logging
+
         self.service_list = []
         current_dir = os.path.dirname(os.path.abspath(__file__))
         services_file_path = os.path.join(current_dir, 'services')
@@ -57,6 +59,7 @@ class ServiceHandler:
         Raises:
             FileNotFoundError: If the prompt file does not exist at the specified path.
         """
+        # TODO: add logging
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(current_dir, 'prompts', "service", f"prompt.txt")
@@ -81,6 +84,8 @@ class ServiceHandler:
         Returns:
         str: The chosen service filename.
         """
+        # TODO: add logging
+
         query = f"Based on this user message, what type of service do they require? User message: {user_message}"
         choice = self.botservice.choose(self.service_list, query, model=SERVICE_MODEL_USE)[0]
         print(f"Chosen service: {choice}")
@@ -102,6 +107,8 @@ class ServiceHandler:
         Returns:
         str: The generated response from the bot after processing the user's message and the relevant document.
         """
+        # TODO: add logging
+
         chosen_service = self.choose_service(user_message)
         service_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'services', chosen_service)
 
@@ -128,6 +135,8 @@ class ServiceHandler:
         Returns:
         str: A single string containing the concatenated content of the selected services.
         """
+        # TODO: add logging
+
         wb = openpyxl.load_workbook(filepath)
         sheet = wb.active
 

@@ -35,6 +35,8 @@ def retrieve_all_embeddings(
     Returns:
         tuple[list[str], list[list[float]]]: A tuple containing a list of file names and their corresponding embeddings.
     """
+    # TODO: add logging
+
     if not new_files:
         new_files = list()
     cluster = cluster_storage.retrieve_cluster()
@@ -73,6 +75,8 @@ def calc_embeddings(file_names: list[str], botservice: BotService, pdf_storage: 
     Returns:
         list[list[float]]: A list of embeddings for the provided file names.
     """
+    # TODO: add logging
+
     file_content = pdf_storage.retrieve_pdfs(file_names)
     file_texts = [extract_text(content) for content in file_content]
     embeddings = botservice.embed(texts=file_texts)
