@@ -18,6 +18,9 @@ LOADING_IMAGE = "loading.gif"
 
 LOADING_DELAY = 0
 
+SCRIPTED_RESPONSES = [
+]
+
 
 class ChatInterface(tk.Tk):
     def __init__(self):
@@ -253,31 +256,35 @@ class AnimatedGIFLabel(tk.Label):
 
 
 def send_api_request(message: str, username: str, usertype: str, location: str):
-    url = 'http://127.0.0.1:5000/generate'
-
-    data = {
-        'username': username,
-        'message': message,
-        'usertype': usertype,
-        'location': location
-    }
-
-    json_data = json.dumps(data)
-    try:
-        response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
-    except requests.exceptions.ConnectionError:
-        return "Error, no connection"
-    if response.status_code == 200:
-        # Print the JSON response from the server
-        response_data = response.json()
-
-        # Access and print the specific part of the response, i.e., the response from the chat function
-        print('Response from server:', response_data['response'])
-        return response_data['response']
+    if SCRIPTED_RESPONSES:
+        time.sleep(2)
+        return SCRIPTED_RESPONSES.pop(0)
     else:
-        # Print the error
-        print('Failed to get a valid response:', response.status_code, response.text)
-        return "Error"
+        url = 'http://127.0.0.1:5000/generate'
+
+        data = {
+            'username': username,
+            'message': message,
+            'usertype': usertype,
+            'location': location
+        }
+
+        json_data = json.dumps(data)
+        try:
+            response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
+        except requests.exceptions.ConnectionError:
+            return "Error, no connection"
+        if response.status_code == 200:
+            # Print the JSON response from the server
+            response_data = response.json()
+
+            # Access and print the specific part of the response, i.e., the response from the chat function
+            print('Response from server:', response_data['response'])
+            return response_data['response']
+        else:
+            # Print the error
+            print('Failed to get a valid response:', response.status_code, response.text)
+            return "Error"
 
 
 if __name__ == "__main__":

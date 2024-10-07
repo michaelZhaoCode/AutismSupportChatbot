@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 from api.chatbot import Chatbot
 from api.botservice.gpt_botservice import GPTBotService
-from api.servicehandler import ServiceHandler
-from api.locationhandler.botservicelocationhandler import BotServiceLocationHandler
+from api.servicehandler.botservice_servicehandler import BotserviceServiceHandler
+from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.chat_history import ChatHistoryInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
@@ -24,8 +24,8 @@ mongo_db = setup_mongo_db()
 chat_history = ChatHistoryInterface(mongo_db)
 pdf_storage = PDFStorageInterface(mongo_db)
 cluster_storage = ClusterStorageInterface(mongo_db)
-location_handler = BotServiceLocationHandler(botservice)
-service_handler = ServiceHandler(botservice, location_handler)
+location_database = SQLiteLocationDatabase(botservice)
+service_handler = BotserviceServiceHandler(botservice, location_database)
 
 chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice, service_handler)
 
