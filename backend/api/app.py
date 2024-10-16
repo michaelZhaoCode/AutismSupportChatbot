@@ -57,7 +57,7 @@ def generate():
 
         # Validate required keys
         if not all(key in data for key in ('username', 'message', 'usertype')):
-            logger.warning("/generate/: request missing a required field")
+            logger.warning("/generate/: Request missing a required field")
             return jsonify({'error': 'Missing required fields'}), 400
 
         username = data['username']
@@ -66,7 +66,7 @@ def generate():
 
         # Validate usertype
         if usertype.lower() not in {'child', 'adult', 'researcher'}:
-            logger.warning("/generate/: request has invalid usertype %s", usertype.lower())
+            logger.warning("/generate/: Request has invalid usertype %s", usertype.lower())
             return jsonify({'error': 'Invalid usertype'}), 400
 
         # Call the chat function
@@ -75,7 +75,7 @@ def generate():
         return jsonify({'response': response}), 200
 
     except Exception as e:
-        logger.error(e)
+        logger.error("/generate/: %s", e)
         return jsonify({'error': 'An error occurred while processing the request'}), 500
 
 
