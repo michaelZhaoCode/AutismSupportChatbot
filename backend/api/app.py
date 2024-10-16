@@ -1,4 +1,5 @@
 import os
+import logging
 from openai import OpenAI
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
@@ -12,12 +13,18 @@ from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.chat_history import ChatHistoryInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import setup_mongo_db
+from logger import setup_logger
 
 load_dotenv()
-# TODO: add logging of creation
+
+# Running this setup in main.py will not correctly initialise settings, so the logger must be set up in here
+# NOTE: currently, the logger will always log to the file app.log even through multiple running processes
+setup_logger("app.log")
+logger = logging.getLogger(__name__)
 
 api_key = os.environ["OPENAI_API_KEY"]
 openai_client = OpenAI(api_key=api_key)
+logger.info("Connected to OpenAI")
 botservice = GPTBotService(openai_client)
 
 mongo_db = setup_mongo_db()
@@ -28,6 +35,7 @@ location_handler = BotServiceLocationHandler(botservice)
 service_handler = ServiceHandler(botservice, location_handler)
 
 chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice, service_handler)
+logger.info("Initialised all global app instances")
 
 app = Flask(__name__)
 
@@ -46,10 +54,10 @@ def index():
 def generate():
     try:
         data = request.get_json()
-        # TODO: add logging
 
         # Validate required keys
         if not all(key in data for key in ('username', 'message', 'usertype')):
+            logger.warning("/generate/: request missing a required field")
             return jsonify({'error': 'Missing required fields'}), 400
 
         username = data['username']
@@ -57,8 +65,8 @@ def generate():
         usertype = data['usertype']
 
         # Validate usertype
-        valid_usertypes = ['child', 'adult', 'researcher']
-        if usertype.lower() not in valid_usertypes:
+        if usertype.lower() not in {'child', 'adult', 'researcher'}:
+            logger.warning("/generate/: request has invalid usertype %s", usertype.lower())
             return jsonify({'error': 'Invalid usertype'}), 400
 
         # Call the chat function
@@ -67,7 +75,7 @@ def generate():
         return jsonify({'response': response}), 200
 
     except Exception as e:
-        print(f"Error occurred: {e}")
+        logger.error(e)
         return jsonify({'error': 'An error occurred while processing the request'}), 500
 
 
