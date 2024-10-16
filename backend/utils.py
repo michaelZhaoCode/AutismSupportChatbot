@@ -37,7 +37,7 @@ def setup_mongo_db() -> Database:
     # Send a ping to confirm a successful connection
     try:
         client.admin.command('ping')
-        logger.info("setup_mongo_db: successfully connected to MongoDB")
+        logger.info("setup_mongo_db: Successfully connected to MongoDB")
     except Exception as e:
         logger.error("setup_mongo_db: %s", e)
     db = client['mydatabase']
@@ -54,9 +54,9 @@ def empty_database() -> None:
     # Drop all collections in the database
     for collection_name in db.list_collection_names():
         db.drop_collection(collection_name)
-        logger.info("empty_database: dropped collection %s", collection_name)
+        logger.info("empty_database: Dropped collection %s", collection_name)
 
-    logger.info("empty_database: emptied the database")
+    logger.info("empty_database: Emptied the database")
 
 
 def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
@@ -75,13 +75,13 @@ def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
     chunks = []
     total_pages = pdf_document.page_count
 
-    logger.info("chunk_pdf_in_memory: beginning pdf chunking on file %s with %s pages",
+    logger.info("chunk_pdf_in_memory: Beginning pdf chunking on file %s with %s pages",
                 pdf_path,
                 total_pages)
     for i in range(total_pages):
         page = pdf_document.load_page(i)
         if not page.get_text():
-            logger.info("chunk_pdf_in_memory: skipping empty page %s", i + 1)
+            logger.info("chunk_pdf_in_memory: Skipping empty page %s", i + 1)
             continue
 
         output_pdf = fitz.open()  # Create a new PDF
@@ -92,7 +92,7 @@ def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
         chunks.append((chunk_name, pdf_chunk))
 
     pdf_document.close()
-    logger.info("chunk_pdf_in_memory: completed pdf chunking")
+    logger.info("chunk_pdf_in_memory: Completed pdf chunking")
     return chunks
 
 
