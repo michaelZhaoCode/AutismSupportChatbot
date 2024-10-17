@@ -8,9 +8,12 @@ The `GPTBotService` class contains the following methods:
 2. `chat` - Processes an input message and returns the bot's response.
 3. `choose` - Selects an option from a list of options based on a query, using a specified GPT model.
 """
+import logging
 
 from api.botservice import BotService
 from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 
 class GPTBotService(BotService):
@@ -33,9 +36,7 @@ class GPTBotService(BotService):
         Returns:
         The embedded representation of the texts.
         """
-        # TODO: add logging
-
-
+        logger.info("embed: creating embeddings with GPT model")
         response = self.openai_client.embeddings.create(
             input=texts,
             model="text-embedding-3-small"
@@ -62,22 +63,22 @@ class GPTBotService(BotService):
         Returns:
         The response from the bot.
         """
-        # TODO: add logging
-
         context_str = ""
         if documents:
             context_str += "Here are some documents to use as context for your response:\n"
             for document in documents:
                 context_str += f"Document Name: {document['title']}\n\nDocument Contents: {document['contents']}\n\n"
         context_str += message
+        logger.debug("chat: Added related contextual documents for the GPT model")
 
         latest_message = {"role": "user", "content": context_str}
         chat_history.append(latest_message)
-        print(chat_history)
+        logger.debug("chat: Added latest message to chat history")
         response = self.openai_client.chat.completions.create(
             model=model,
             messages=chat_history
         )
+        logger.info("chat: Obtained response from GPT model")
 
         return response.choices[0].message.content
 
@@ -94,8 +95,6 @@ class GPTBotService(BotService):
         Returns:
         The n chosen options.
         """
-        # TODO: add logging
-
         if n == 1:
             instruct = ("You are to select an option that best fits the query given to you. Respond only with one of "
                         "the options provided.")
@@ -114,7 +113,7 @@ class GPTBotService(BotService):
             model=model,
             messages=chat_history
         )
-
-        print(response.choices[0].message.content)
+        logger.info("choose: Obtained response from GPT model")
+        logger.debug("choose: response=%s", response.choices[0].message.content)
 
         return response.choices[0].message.content.split('\n')
