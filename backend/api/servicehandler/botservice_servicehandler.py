@@ -5,7 +5,7 @@ to chat with the bot and choose services from a list of available services.
 
 import os
 import random
-import openpyxl
+from math import radians, sin, cos, sqrt, atan2
 
 from constants import SERVICE_MODEL_USE
 from constants import MAX_SERVICES
@@ -13,7 +13,7 @@ from api.botservice import BotService
 from api.locationdatabase import LocationDatabase
 from api.servicehandler import ServiceHandler
 
-# TODO: REVAMP
+
 class BotserviceServiceHandler(ServiceHandler):
     """
     A handler class for managing bot services. This class interacts with the BotService
@@ -40,12 +40,7 @@ class BotserviceServiceHandler(ServiceHandler):
         """
         # TODO: add logging
 
-        self.service_list = []
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        services_file_path = os.path.join(current_dir, 'services')
-        for filename in os.listdir(services_file_path):
-            if os.path.isfile(os.path.join(services_file_path, filename)):
-                self.service_list.append(filename)
+        self.service_list = self.location_database.get_all_service_types()
 
     @staticmethod
     def _load_prompt() -> str:
@@ -63,7 +58,7 @@ class BotserviceServiceHandler(ServiceHandler):
         # TODO: add logging
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_dir, 'prompts', "service", f"prompt.txt")
+        file_path = os.path.join(current_dir, "..", 'prompts', "service", f"prompt.txt")
 
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"The prompt file does not exist at '{file_path}'.")
@@ -92,74 +87,105 @@ class BotserviceServiceHandler(ServiceHandler):
         print(f"Chosen service: {choice}")
         return choice
 
-    def get_response(self, user_message: str, location: str) -> str:
+    def get_response(self, user_message: str, location: str, region_id: int = -1) -> str:
         """
-        Generates the bot's response by selecting a relevant service based on the user's message
-        and utilizing the contents of the corresponding .xlsx file, if applicable, as part of the response.
+        Generates a response by selecting and processing service data based on the user's message and location.
 
-        The function first chooses an appropriate service by interpreting the user's message. If the chosen
-        service corresponds to an .xlsx file, the content of the file is loaded and used as a document in
-        the bot's response generation. If no location is provided, random service data will be selected.
+        The function first interprets the user's message to determine an appropriate service category. It then uses
+        the location, if provided, to refine the search within `self.location_database`. If no location is specified,
+        random service data may be selected. Latitude and longitude are estimated for the location via a prompt,
+        and the bot compiles a list of relevant service providers in the specified region.
 
         Parameters:
-        user_message (str): The input message from the user, used to determine the appropriate service.
-        location (str): The location provided by the user to assist in filtering service data.
+            user_message (str): The user's input message, which guides the service selection.
+            location (str): The user's location, used to filter services by geographic proximity.
+            region_id (int): A specified regional id for further narrowing down services by region.
 
         Returns:
-        str: The generated response from the bot after processing the user's message and the relevant document.
+            str: The bot's generated response after processing the user's message and the selected service data.
         """
         # TODO: add logging
 
         chosen_service = self.choose_service(user_message)
-        service_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'services', chosen_service)
 
-        document = {"title": f"Known providers of {chosen_service}"}
-        if chosen_service.endswith('.xlsx'):
-            document['contents'] = self._get_service_locations(service_path, location)
+        if location:
+            location_prompt = f"Provide the estimated latitude and longitude values of this location, " \
+                              f"for your output format, only provide the two values separated by a " \
+                              f"single comma with nothing else.\nLocation: {location}"
+
+            try:
+                latitude, longitude = self.botservice.chat(location_prompt, model=SERVICE_MODEL_USE,
+                                                           chat_history=[]).split(",")
+                latitude = float(latitude.strip())
+                longitude = float(longitude.strip())
+            except ValueError:
+                latitude, longitude = None, None
         else:
-            document['contents'] = ""
+            latitude, longitude = None, None
+
+        document = {"title": f"Known providers of {chosen_service}",
+                    'contents': self._find_services(chosen_service, MAX_SERVICES, region_id, latitude, longitude)}
 
         prompt = self._load_prompt().format(user_message)
         response = self.botservice.chat(prompt, model=SERVICE_MODEL_USE, documents=[document], chat_history=[])
         # Remove Markdown bold
         return response.replace("**", "")
 
-    def _get_service_locations(self, filepath: str, location: str) -> str:
-        """
-        Loads the contents of an .xlsx file into a single string, selecting the closest services
-        based on the provided location or random services if no location is provided.
+    def _find_services(self, service_type: str, n: int, region_id: int = -1, latitude: float = None,
+                       longitude: float = None) -> str:
 
-        Parameters:
-        filepath (str): The path to the .xlsx file.
-        location (str, optional): The location string to compare services against.
+        # Step 1: Check if region_path is provided
+        if region_id > -1:
+            region = self.location_database.find_region_by_id(region_id)
+            if not region:
+                return "Region not found."
 
-        Returns:
-        str: A single string containing the concatenated content of the selected services.
-        """
-        # TODO: add logging
-
-        wb = openpyxl.load_workbook(filepath)
-        sheet = wb.active
-
-        # Extract all addresses from the "Address" column
-        rows = list(sheet.iter_rows(values_only=True))
-        headers = rows[0]  # Assuming the first row is the header
-        address_index = headers.index("Address")
-        addresses = [row[address_index] for row in rows[1:]]
-
-        # Determine whether to use location-based filtering or random selection
-        if location:
-            # Use the location_handler to find the closest services
-            closest_addresses = self.location_handler.find_closest(addresses, location, MAX_SERVICES)
+            # Use region's latitude and longitude if not provided
+            if latitude is None and longitude is None:
+                latitude = region['Latitude']
+                longitude = region['Longitude']
         else:
-            # If no location is provided, pick random addresses
-            closest_addresses = random.sample(addresses, min(MAX_SERVICES, len(addresses)))
+            region_id = None  # No region bound
 
-        # Build content string for the selected services
-        content = ""
-        for row in rows[1:]:
-            if row[address_index] in closest_addresses:
-                row_content = ", ".join(f"{headers[i]}: {value}" for i, value in enumerate(row))
-                content += row_content + " \n\n"
+        # Step 2: Fetch services based on region
+        if region_id:
+            services = self.location_database.find_services_in(region_id, service_type)
+        else:
+            services = self.location_database.find_all_services(service_type)
 
-        return content
+        # Step 3: Filter and sort services by distance if lat/long is given
+        if latitude is not None and longitude is not None:
+            services = sorted(
+                services,
+                key=lambda s: self._haversine_distance(latitude, longitude, s['Latitude'], s['Longitude'])
+            )
+        elif region_id == -1 and latitude is None and longitude is None:
+            # Step 4: Select random services if no location data is provided
+            services = random.sample(services, min(n, len(services)))
+
+        # Step 5: Select the top n closest services
+        closest_services = services[:n]
+
+        # Step 6: Concatenate service information for the return string
+        result = "\n\n".join(
+            f"Service Name: {service['ServiceName']}\n"
+            f"Address: {service.get('Address', 'N/A')}\n"
+            f"Phone: {service.get('Phone', 'N/A')}\n"
+            f"Website: {service.get('Website', 'N/A')}"
+            for service in closest_services
+        )
+        return result
+
+    # Haversine distance helper function
+    @staticmethod
+    def _haversine_distance(lat1, lon1, lat2, lon2):
+        # Convert latitude and longitude from degrees to radians
+        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+        # Haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        r = 6371  # Radius of Earth in kilometers
+        return r * c
