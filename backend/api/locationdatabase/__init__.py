@@ -93,12 +93,41 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def find_all_services(self) -> list[dict]:
+    def find_region_by_id(self, region_id: int) -> dict:
         """
-        Retrieves all services stored in the database.
+        Finds and returns a region that matches the specified RegionID.
+
+        Args:
+            region_id (int): The ID of the region to find.
+
+        Returns:
+            dict: A dictionary containing the details of the region, including RegionID, RegionName,
+                  RegionType, ParentRegionID, Latitude, and Longitude.
+                  Returns an empty dictionary if the region is not found.
+        """
+        pass
+
+    @abstractmethod
+    def find_all_services(self, service_type: str = None) -> list[dict]:
+        """
+        Retrieves all services stored in the database, optionally filtered by service type.
+
+        Args:
+            service_type (str, optional): The type of services to retrieve. If None,
+                                         retrieves all services.
 
         Returns:
             list[dict]: List of dictionaries, each containing details for a service.
+        """
+        pass
+
+    @abstractmethod
+    def get_all_service_types(self) -> list[str]:
+        """
+        Retrieves all unique service types stored in the database.
+
+        Returns:
+            list[str]: A list of unique service type names.
         """
         pass
 
@@ -128,5 +157,24 @@ class LocationDatabase(ABC):
         Removes all location-related entries from the database.
 
         Clears all data associated with regions, provinces, cities, and services.
+        """
+        pass
+
+    @abstractmethod
+    def create_snapshot(self) -> None:
+        """
+        Creates a snapshot of the database, storing its current state in an easily accessible format.
+
+        This method saves the state of the database, which can be quickly accessed later by calling `load_snapshot`.
+        """
+        pass
+
+    @abstractmethod
+    def load_snapshot(self) -> dict:
+        """
+        Loads a previously created snapshot of the database in a dictionary format.
+
+        Returns:
+            dict: A dictionary representing the saved state of the database.
         """
         pass
