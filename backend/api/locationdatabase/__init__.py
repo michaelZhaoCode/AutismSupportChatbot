@@ -20,9 +20,9 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> None:
+    def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> bool:
         """
-        Adds a region to the database.
+        Adds a region to the database. Returns if successful.
 
         Args:
             region (str): Identifier for the region.
@@ -35,9 +35,10 @@ class LocationDatabase(ABC):
 
     @abstractmethod
     def insert_service(self, service: str, service_type: str, region_id: int, latitude: float, longitude: float,
-                       address: str = None, phone: str = None, website: str = None) -> None:
+                       address: str = None, phone: str = None, website: str = None) -> bool:
         """
         Inserts a new service entry into the database for a specified region, with optional contact and location details.
+        Returns if successful.
 
         Args:
             service (str): The name of the service to be added.
@@ -132,9 +133,9 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def remove_region(self, region_id: int) -> None:
+    def remove_region(self, region_id: int) -> bool:
         """
-        Deletes a specified region from the database.
+        Deletes a specified region from the database. Returns if successful.
 
         Args:
             region_id (int): ID of the region to delete.
@@ -142,9 +143,9 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def remove_service(self, service_id: int) -> None:
+    def remove_service(self, service_id: int) -> bool:
         """
-        Deletes a specified service from the database.
+        Deletes a specified service from the database. Returns if successful.
 
         Args:
             service_id (int): ID of the service to delete.
