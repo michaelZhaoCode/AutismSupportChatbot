@@ -55,7 +55,7 @@ class SQLiteLocationDatabase(LocationDatabase):
 
             print("Database initialized with Regions and Services tables.")
 
-    def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> None:
+    def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> bool:
         """Inserts a region entry into the SQLite database."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -65,14 +65,14 @@ class SQLiteLocationDatabase(LocationDatabase):
                 cursor.execute("SELECT RegionID FROM Regions WHERE RegionName = ? AND RegionType = ?", (region, region_type))
                 if cursor.fetchone():
                     print(f"Error: Region '{region}' with type '{region_type}' already exists.")
-                    return
+                    return False
 
                 # Check if ParentRegionID exists if provided
                 if parent_id is not None:
                     cursor.execute("SELECT RegionID FROM Regions WHERE RegionID = ?", (parent_id,))
                     if cursor.fetchone() is None:
                         print(f"Error: Parent region with ID '{parent_id}' does not exist.")
-                        return
+                        return False
 
                 # Insert the new region
                 cursor.execute('''
@@ -82,22 +82,23 @@ class SQLiteLocationDatabase(LocationDatabase):
 
                 conn.commit()
                 print(f"Region '{region}' of type '{region_type}' inserted successfully.")
+                return True
 
         except sqlite3.Error as e:
             print(f"Database error: {e}")
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def insert_province(self, province: str, country_id: int, latitude: float, longitude: float) -> None:
+    def insert_province(self, province: str, country_id: int, latitude: float, longitude: float) -> bool:
         """Inserts a province entry into the SQLite database."""
-        self.insert_region(province, "Province", country_id, latitude, longitude)
+        return self.insert_region(province, "Province", country_id, latitude, longitude)
 
-    def insert_city(self, city: str, province_id: int, latitude: float, longitude: float) -> None:
+    def insert_city(self, city: str, province_id: int, latitude: float, longitude: float) -> bool:
         """Inserts a city entry into the SQLite database."""
-        self.insert_region(city, "City", province_id, latitude, longitude)
+        return self.insert_region(city, "City", province_id, latitude, longitude)
 
     def insert_service(self, service: str, service_type: str, region_id: int, latitude: float, longitude: float,
-                       address: str = None, phone: str = None, website: str = None) -> None:
+                       address: str = None, phone: str = None, website: str = None) -> bool:
         """Inserts a service entry associated with a region into the SQLite database with error checking."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -107,7 +108,7 @@ class SQLiteLocationDatabase(LocationDatabase):
                 cursor.execute("SELECT RegionID FROM Regions WHERE RegionID = ?", (region_id,))
                 if cursor.fetchone() is None:
                     print(f"Error: Region with ID '{region_id}' does not exist in the database.")
-                    return
+                    return False
 
                 # Insert the new service with its associated region and additional information
                 cursor.execute('''
@@ -118,6 +119,7 @@ class SQLiteLocationDatabase(LocationDatabase):
                 conn.commit()
                 print(
                     f"Service '{service}' of type '{service_type}' inserted successfully in region with ID '{region_id}'.")
+                return True
 
         except sqlite3.Error as e:
             print(f"Database error: {e}")
@@ -178,7 +180,7 @@ class SQLiteLocationDatabase(LocationDatabase):
         Returns:
             list[dict]: List of dictionaries, each containing details for a region.
                                   Each dictionary includes RegionID, RegionName, RegionType,
-                                  ParentRegionName, ParentRegionType, Latitude, and Longitude.
+                                  ParentRegionID, Latitude, and Longitude.
         """
         regions = []
         try:
@@ -389,7 +391,7 @@ class SQLiteLocationDatabase(LocationDatabase):
 
         return service_types
 
-    def remove_region(self, region_id: int) -> None:
+    def remove_region(self, region_id: int) -> bool:
         """Removes a specific region and its subregions from the SQLite database by region ID."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -399,12 +401,13 @@ class SQLiteLocationDatabase(LocationDatabase):
                 cursor.execute("SELECT RegionID FROM Regions WHERE RegionID = ?", (region_id,))
                 if cursor.fetchone() is None:
                     print(f"Error: Region with ID '{region_id}' does not exist.")
-                    return
+                    return False
 
                 # Start the recursive deletion
                 self._delete_region_and_descendants(region_id, cursor)
                 conn.commit()
                 print(f"Region with ID '{region_id}' and all its subregions were removed successfully.")
+                return True
 
         except sqlite3.Error as e:
             print(f"Database error: {e}")
@@ -421,7 +424,7 @@ class SQLiteLocationDatabase(LocationDatabase):
             self._delete_region_and_descendants(child[0], cursor)
         cursor.execute("DELETE FROM Regions WHERE RegionID = ?", (region_id,))
 
-    def remove_service(self, service_id: int) -> None:
+    def remove_service(self, service_id: int) -> bool:
         """Removes a specific service from the SQLite database by service ID."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -431,12 +434,13 @@ class SQLiteLocationDatabase(LocationDatabase):
                 cursor.execute("SELECT ServiceID FROM Services WHERE ServiceID = ?", (service_id,))
                 if cursor.fetchone() is None:
                     print(f"Error: Service with ID '{service_id}' does not exist.")
-                    return
+                    return False
 
                 # Delete the service
                 cursor.execute("DELETE FROM Services WHERE ServiceID = ?", (service_id,))
                 conn.commit()
                 print(f"Service with ID '{service_id}' was removed successfully.")
+                return True
 
         except sqlite3.Error as e:
             print(f"Database error: {e}")
