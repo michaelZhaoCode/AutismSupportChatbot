@@ -541,6 +541,22 @@ class SQLiteLocationDatabase(LocationDatabase):
             print(f"An error occurred while loading the snapshot: {e}")
             return {}
 
+    def get_last_inserted_region_id(self) -> int:
+        """Retrieves the ID of the last inserted region."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT seq FROM sqlite_sequence WHERE name='Regions'")
+            result = cursor.fetchone()
+            return result[0] if result else None
+
+    def get_last_inserted_service_id(self) -> int:
+        """Retrieves the ID of the last inserted service."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT seq FROM sqlite_sequence WHERE name='Services'")
+            result = cursor.fetchone()
+            return result[0] if result else None
+
 
 if __name__ == "__main__":
     database = SQLiteLocationDatabase()

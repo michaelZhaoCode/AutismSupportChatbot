@@ -245,7 +245,7 @@ class LocationGUI(tk.Tk):
 
     def add_region_to_list(self, name, region_type, parent_id, latitude, longitude):
         """Add a new region to the displayed list of regions."""
-        new_region_id = "NEW"
+        new_region_id = self.database.get_last_inserted_region_id()
 
         region_info = (
             f"{new_region_id}.".ljust(6) +
@@ -391,7 +391,7 @@ class LocationGUI(tk.Tk):
 
     def add_service_to_list(self, service, service_type, region_id, latitude, longitude, address, phone, website):
         """Add a new service to the displayed list of services."""
-        new_service_id = "NEW"
+        new_service_id = self.database.get_last_inserted_service_id()
 
         service_info = (
                 f"{new_service_id}.".ljust(6) +
