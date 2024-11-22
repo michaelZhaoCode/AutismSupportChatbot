@@ -453,3 +453,4 @@ class LocationGUI(tk.Tk):
 if __name__ == "__main__":
     app = LocationGUI()
     app.mainloop()
+    app.database.create_snapshot()
