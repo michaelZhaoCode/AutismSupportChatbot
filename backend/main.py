@@ -1,5 +1,5 @@
 """
-app.py
+main.py
 
 This module serves as the entry point for running the Flask application.
 
