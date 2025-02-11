@@ -4,6 +4,9 @@ file_storage.py
 This module provides a class to store, retrieve, and delete PDF files in a MongoDB database using GridFS.
 """
 import gridfs
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PDFStorageInterface:
@@ -58,15 +61,14 @@ class PDFStorageInterface:
         for pdf_name in pdf_names:
             # Retrieve the file from GridFS
             file_data = self.fs.find_one({'filename': pdf_name})
-            # TODO: add logging
 
             if file_data:
                 # Read the file data into memory
                 pdf_content = file_data.read()
-                print(f"Retrieved PDF file '{pdf_name}' successfully.")
+                logger.info("retrieve_pdfs: Retrieved PDF file %s successfully", pdf_name)
                 data.append(pdf_content)
             else:
-                print(f"PDF file '{pdf_name}' not found in the database.")
+                logger.info("retrieve_pdfs: PDF file %s not found in the database", pdf_name)
                 return None
         return data
 
@@ -80,9 +82,8 @@ class PDFStorageInterface:
         """
         self.db.fs.files.create_index([('filename', 1)], unique=True)
         self.fs.put(pdf_chunk, filename=pdf_name)
-        # TODO: add logging
 
-        print(f"Stored PDF chunk '{pdf_name}' successfully.")
+        logger.info("store_pdf_chunk: Stored PDF chunk %s successfully", pdf_name)
 
     def delete_pdf(self, pdf_name: str) -> None:
         """
@@ -97,9 +98,9 @@ class PDFStorageInterface:
         if file_data:
             # Delete the file using its _id
             self.fs.delete(file_data._id)
-            print(f"Deleted PDF file '{pdf_name}' successfully.")
+            logger.info("delete_pdf: Deleted PDF file %s successfully", pdf_name)
         else:
-            print(f"PDF file '{pdf_name}' not found in the database.")
+            logger.info("delete_pdf: PDF file %s not found in the database", pdf_name)
 
     def retrieve_all_pdfs(self) -> tuple[list[str], list[bytes]]:
         """
@@ -122,7 +123,9 @@ class PDFStorageInterface:
 # Example usage:
 if __name__ == "__main__":
     from utils import setup_mongo_db
+    from logger import setup_logger
 
+    setup_logger("db_funcs.log")
     datab = setup_mongo_db()
     pdf_storage_interface = PDFStorageInterface(datab)
     print(pdf_storage_interface.retrieve_pdfs(['autism_handbook']))

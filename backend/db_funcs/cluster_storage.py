@@ -4,6 +4,9 @@ cluster_storage.py
 This module provides a class to store, retrieve, and delete clustering data in a MongoDB database.
 """
 from collections import defaultdict
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ClusterStorageInterface:
@@ -47,13 +50,14 @@ class ClusterStorageInterface:
                 corresponding embedding.
         """
         clusters_collection = self.db['clusters']
-        # TODO: add logging
 
         cluster = defaultdict(list)
         for i in range(len(centroids)):
             centroid = centroids[i]
             embedding_and_name = embeddings_and_names[i]
             cluster[tuple(centroid)].append(embedding_and_name)
+            logging.debug("store_cluster: Inserting centroid (%.5f, %.5f) with associated embedding %s",
+                          centroid[0], centroid[1], embedding_and_name[0])
 
         # each embedding is a tuple of (name, embedding val)
         cluster_documents = [
@@ -64,6 +68,7 @@ class ClusterStorageInterface:
         ]
 
         clusters_collection.insert_many(cluster_documents)
+        logging.info("store_cluster: Inserted clustering data into clusters_collection")
 
     def retrieve_cluster(self) -> dict[tuple[float, ...], list[tuple[str, list[float]]]]:
         """
@@ -72,26 +77,27 @@ class ClusterStorageInterface:
         Returns: dict[tuple[float, ...], list[tuple[str, list[float]]]]: A dictionary where the keys are centroids
             and the values are lists of tuples containing names and embeddings.
         """
-        # TODO: add logging
-
         clusters_collection = self.db['clusters']
 
         cluster = {tuple(document['centroid']): document['embedding_and_name'] for document in
                    clusters_collection.find()}
+
+        logging.info("retrieve_cluster: Retrieved clustering data from the MongoDB database")
         return cluster
 
     def delete_cluster(self) -> None:
         """
         Delete the clustering data from the MongoDB database.
         """
-        # TODO: add logging
-
         self.db.drop_collection('clusters')
+        logger.info("delete_cluster: Deleted clustering data from the MongoDB database")
 
 
 if __name__ == "__main__":
     from utils import setup_mongo_db
+    from logger import setup_logger
 
+    setup_logger("db_funcs.log")
     database = setup_mongo_db()
     print("Deleting cluster.")
     cluster_storage_interface = ClusterStorageInterface(database)
