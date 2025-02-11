@@ -3,7 +3,10 @@ chat_history.py
 
 This module provides functions to insert and retrieve chat history for users in a MongoDB database.
 """
+import logging
 from pymongo.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 class ChatHistoryInterface:
@@ -38,12 +41,11 @@ class ChatHistoryInterface:
             {'$push': {'chat_history': {'$each': new_chat_history}}},
             upsert=True
         )
-        # TODO: add logging
 
         if result.matched_count == 0:
-            print(f"New user added: {username}.")
+            logger.info("insert_chat_history: New user %s added", username)
         else:
-            print(f"Existing user: {username} updated.")
+            logger.info("insert_chat_history: Existing user %s updated", username)
 
     def retrieve_chat_history(self, username: str) -> list[dict[str, str]]:
         """
@@ -61,22 +63,23 @@ class ChatHistoryInterface:
 
         # Find the document for the given username
         document = history_collection.find_one({'username': username})
-        # TODO: add logging
 
         # Check if the document was found
         if document:
-            print(f"Found chat history for username: {username}")
+            logger.info("retrieve_chat_history: Found chat history for username %s", username)
             # Return the chat history if available
             history = document['chat_history']
             formatted_history = []
             for prompt, answer in history:
                 formatted_history.append({'role': 'user', 'content': prompt})
                 formatted_history.append({'role': 'assistant', 'content': answer})
+            logger.info("retrieve_chat_history: Returning ordered chat history between the user and assistant")
             return formatted_history
 
         else:
             # Return an empty list if no history is found
-            print(f"No chat history found for username: {username}")
+            logger.info("retrieve_chat_history: No chat history found for username %s; returning an empty list",
+                        username)
             return []
 
     def clear_chat_history(self, username: str) -> None:
@@ -90,15 +93,17 @@ class ChatHistoryInterface:
 
         result = history_collection.delete_one({'username': username})
         if result.deleted_count > 0:
-            print(f"Cleared chat history for user '{username}' successfully.")
+            logger.info("clear_chat_history: Successfully cleared chat history for user %s", username)
         else:
-            print(f"No chat history found for username: '{username}'.")
+            logger.info("clear_chat_history: No chat history found for user %s", username)
 
 
 # Example usage:
 if __name__ == "__main__":
     from utils import setup_mongo_db
+    from logger import setup_logger
 
+    setup_logger("db_funcs.log")
     db = setup_mongo_db()
     chat_history_interface = ChatHistoryInterface(db)
     chat_history_interface.insert_chat_history('boss', [['hi', 'yes']])

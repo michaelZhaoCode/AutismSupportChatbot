@@ -3,10 +3,14 @@ embed.py
 
 This module provides functions to retrieve and calculate embeddings for PDF files using the BotService.
 """
+import logging
+
 from api.botservice import BotService
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import extract_text
+
+logger = logging.getLogger(__name__)
 
 
 # when user calls insert or bulk insert, we dont need to directly call insert/bulk insert and thats it whatever new
@@ -35,10 +39,9 @@ def retrieve_all_embeddings(
     Returns:
         tuple[list[str], list[list[float]]]: A tuple containing a list of file names and their corresponding embeddings.
     """
-    # TODO: add logging
-
     if not new_files:
         new_files = list()
+    logger.debug("retrieve_all_embeddings: Retrieving cluster data")
     cluster = cluster_storage.retrieve_cluster()
 
     names = []
@@ -48,10 +51,12 @@ def retrieve_all_embeddings(
             names.append(name)
             embeddings.append(embedding)
     if is_insert:
+        logger.info("retrieve_all_embeddings: Calculating new embeddings to insert")
         new_embeddings = calc_embeddings(new_files, botservice, pdf_storage)
         names.extend(new_files)
         embeddings.extend(new_embeddings)
     else:
+        logger.info("retrieve_all_embeddings: New embeddings not inserted (is_insert=False)")
         files_set = set(new_files)
         new_names = []
         new_embeddings = []
@@ -59,6 +64,7 @@ def retrieve_all_embeddings(
             if name not in files_set:
                 new_names.append(name)
                 new_embeddings.append(calc_embeddings([name], botservice, pdf_storage)[0])
+    logger.info("retrieve_all_embeddings: Returning names and embeddings")
     return names, embeddings
 
 
@@ -75,9 +81,9 @@ def calc_embeddings(file_names: list[str], botservice: BotService, pdf_storage: 
     Returns:
         list[list[float]]: A list of embeddings for the provided file names.
     """
-    # TODO: add logging
-
     file_content = pdf_storage.retrieve_pdfs(file_names)
     file_texts = [extract_text(content) for content in file_content]
+    logger.info("calc_embeddings: Retrieved PDFs and extracted text")
     embeddings = botservice.embed(texts=file_texts)
+    logger.info("calc_embeddings: Calculated embeddings for PDF texts")
     return embeddings

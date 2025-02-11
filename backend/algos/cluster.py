@@ -3,6 +3,8 @@ cluster.py
 
 This module provides functions to compute clusters for embeddings and to find the closest cluster for a given text.
 """
+import logging
+
 import numpy as np
 from sklearn.cluster import KMeans
 from math import sqrt
@@ -11,6 +13,8 @@ from api.botservice import BotService
 from algos.embed import retrieve_all_embeddings
 from db_funcs.cluster_storage import ClusterStorageInterface
 from db_funcs.file_storage import PDFStorageInterface
+
+logger = logging.getLogger(__name__)
 
 
 def compute_cluster(files_list: list[str], botservice: BotService, cluster_storage: ClusterStorageInterface,
@@ -22,6 +26,7 @@ def compute_cluster(files_list: list[str], botservice: BotService, cluster_stora
         files_list (list[str]): List of file names to compute clusters for.
         botservice (BotService): BotService instance for generating embeddings.
     """
+    logging.debug("compute_cluster: Retrieving embeddings and clearing previous clustering data")
     names, embeddings = retrieve_all_embeddings(botservice, new_files=files_list, cluster_storage=cluster_storage,
                                                 pdf_storage=pdf_storage)
     cluster_storage.delete_cluster()
@@ -32,13 +37,15 @@ def compute_cluster(files_list: list[str], botservice: BotService, cluster_stora
 
     # Create KMeans model
     kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+    logging.debug("compute_cluster: Created KMeans model")
 
     # Fit the model to the embeddings data
     kmeans.fit(embeddings)
+    logging.debug("compute_cluster: Trained KMeans model")
 
+    logging.debug("compute_cluster: Storing clustering data in database")
     centroids = [kmeans.cluster_centers_[i] for i in kmeans.labels_]
     cluster_storage.store_cluster(centroids, list(zip(names, embeddings)))
-    # TODO: add logging
 
 
 def give_closest_cluster(text: str, botservice: BotService, cluster_storage: ClusterStorageInterface) -> list[str]:
@@ -57,13 +64,14 @@ def give_closest_cluster(text: str, botservice: BotService, cluster_storage: Clu
     # label, labels can be in any order as they correspond to embeddings
     new_embedding = np.array(botservice.embed(texts=[text])[0])
 
+    logging.debug("give_closest_cluster: Retrieving clustering data")
     cluster = cluster_storage.retrieve_cluster()
     centroids = np.array(list(cluster.keys()))
 
     distances = np.linalg.norm(centroids - new_embedding, axis=1)
     closest_cluster = [value[0] for value in cluster[tuple(centroids[np.argmin(distances)])]]
-    # TODO: add logging
 
+    logging.debug("give_closest_cluster: Returning closest cluster")
     return closest_cluster
 
 # delete_cluster()
