@@ -1,7 +1,7 @@
 import os
 import logging
 from openai import OpenAI
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, after_this_request
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
@@ -83,6 +83,10 @@ def generate():
 
         # Call the chat function
         response = chatbot_obj.chat(message, username, usertype, location, region_id)
+
+        @after_this_request
+        def update_user(_):
+            chatbot_obj.update_user(username, message, response)
 
         return jsonify({'response': response}), 200
 

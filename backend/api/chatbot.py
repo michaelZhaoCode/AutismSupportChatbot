@@ -7,8 +7,9 @@ enhance responses using the BotService.
 """
 import logging
 import os
+from collections import Counter
 
-from constants import MAIN_MODEL_USE
+from constants import MAIN_MODEL_USE, MAJORITY_VOTING_N, BLURB_HISTORY, BLURB_MODEL_USE
 from api.botservice import BotService
 from api.servicehandler import ServiceHandler
 from algos.cluster import compute_cluster, give_closest_cluster
@@ -145,22 +146,28 @@ class Chatbot:
             "A chatbot that has information about local services that the user wants to access."
         ]
 
-        selected = self.botservice.choose(
+        # Request multiple generations for majority voting.
+        responses = self.botservice.choose(
             model=MAIN_MODEL_USE,
             query=f"Given the following user message, who should the user chat with?\nUser message: {prompt}",
             options=options,
-        )[0]
+            n=MAJORITY_VOTING_N  # Generate n responses for majority voting
+        )
 
-        # DEBUGGING PURPOSES
-        # print(selected)
+        # Since choices default to 1, responses is a list of lists, each inner list containing one option.
+        # Flatten the responses to get the chosen option from each generation.
+        votes = [resp[0].strip() for resp in responses if resp and resp[0].strip()]
 
-        if 'autism' in selected.lower():
+        # Majority vote: select the option that appears most frequently.
+        majority_choice, _ = Counter(votes).most_common(1)[0]
+
+        if 'autism' in majority_choice.lower():
             print("Using RAG chatbot.")
             return 'rag'
-        elif "self-harm" in selected.lower():
+        elif "self-harm" in majority_choice.lower():
             print("Using filter chatbot.")
             return 'filter'
-        elif "service" in selected.lower():
+        elif "service" in majority_choice.lower():
             print("Using service chatbot.")
             return 'service'
         else:
@@ -193,7 +200,7 @@ class Chatbot:
             response = self._generate(prompt, username, usertype, choice).replace("**", "")
 
         logger.info("chat: Inserting chat history to the database")
-        self.chat_history.insert_chat_history(username, [[prompt, response]])
+
         return response
 
     def add_pdf(self, pdf_path: str) -> None:
@@ -239,6 +246,43 @@ class Chatbot:
             pdf_storage=self.pdf_storage
         )
         logger.info("populate_pdfs: Cluster updated")
+
+    def update_user(self, username: str, prompt: str, response: str):
+        """
+        Updates the user's chat history and potentially refines their personality blurb based on the latest interactions.
+
+        Args:
+            username (str): The username whose data is being updated.
+            prompt (str): The user's latest input.
+            response (str): The chatbot's response.
+        """
+        self.chat_history.insert_chat_history(username, [[prompt, response]])
+        current_blurb = self.chat_history.retrieve_personality(username)
+        history = self.chat_history.retrieve_chat_history(username)
+        recent = history[-BLURB_HISTORY:] if len(history) > BLURB_HISTORY else history
+
+        # Format chat history into a readable string
+        formatted_history = "\n".join(
+            f"{entry['role'].capitalize()}: {entry['content']}" for entry in recent
+        )
+
+        # Construct a prompt to refine the personality blurb
+        update_prompt = f"""
+        The following is a description of a user: 
+        "{current_blurb}"
+
+        Based on the last few messages in their chat history, update or expand this description 
+        to reflect any new insights about their conversation style, preferences, or notable traits or information that would be useful for a chatbot to consider. 
+        Only add new information if relevant. Otherwise keep it the same.
+
+        Chat History:
+        {formatted_history}
+
+        Provide the updated personality description:
+        """
+
+        new_blurb = self.botservice.chat(update_prompt, BLURB_MODEL_USE, [])
+        self.chat_history.update_personality(username, new_blurb)
 
     def clear_history(self, username: str) -> None:
         """Clear the chat history for a given username."""
