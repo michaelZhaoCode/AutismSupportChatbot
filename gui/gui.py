@@ -5,6 +5,7 @@ import threading
 import requests
 import json
 import itertools
+import geocoder
 from PIL import Image, ImageTk  # Required for image processing
 import pyttsx3
 
@@ -372,6 +373,9 @@ def send_api_request(message: str, username: str, usertype: str, location: str, 
         return SCRIPTED_RESPONSES.pop(0)
     else:
         url = f'{URL}/generate'
+
+        if location == "":
+            location = geocoder.ip("me").latlng
 
         data = {
             'username': username,
