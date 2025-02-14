@@ -82,38 +82,46 @@ class GPTBotService(BotService):
 
         return response.choices[0].message.content
 
-    def choose(self, options: list[str], query: str, model: str, n: int = 1) -> list[str]:
+    def choose(self, options: list[str], query: str, model: str, choices: int = 1, n: int = 1) -> list[str] | list[
+        list[str]]:
         """
-        Selects an option from a list of options using a GPT-based model.
+        Selects one or more options from a list of options using a GPT-based model.
 
         Parameters:
         options: A list of options to choose from.
         query: The query to determine the choice.
         model: The GPT model to be used for making the choice.
-        n: The amount of options to choose from
+        choices: The number of options to select.
+        n: The number of generations to produce.
 
         Returns:
-        The n chosen options.
+        A list of selected options if n == 1.
+        A list of lists of selected options if n > 1.
         """
-        if n == 1:
+        if choices == 1:
             instruct = ("You are to select an option that best fits the query given to you. Respond only with one of "
                         "the options provided.")
         else:
-            instruct = (f"You are to select the top {n} options that best fit the query given to you. Respond only "
-                        f"with your chosen options out of those provided, each on new lines.")
+            instruct = (
+                f"You are to select the top {choices} options that best fit the query given to you. Respond only "
+                f"with your chosen options out of those provided, each on a new line.")
+
         chat_history = [
             {"role": "system", "content": instruct}
         ]
-        prompt = query + "\nOptions:\n"
-        for option in options:
-            prompt += option + "\n"
+        prompt = query + "\nOptions:\n" + "\n".join(options)
         chat_history.append({"role": "user", "content": prompt})
 
         response = self.openai_client.chat.completions.create(
             model=model,
-            messages=chat_history
+            messages=chat_history,
+            n=n  # Generate multiple responses if needed
         )
         logger.info("choose: Obtained response from GPT model")
-        logger.debug("choose: response=%s", response.choices[0].message.content)
+        logger.debug("choose: response=%s", response.choices)
 
-        return response.choices[0].message.content.split('\n')
+        # Extract results from response
+        results = [choice.message.content.split("\n") for choice in response.choices]
+
+        # Return a flat list if n == 1, otherwise return a list of lists
+        return results[0] if n == 1 else results

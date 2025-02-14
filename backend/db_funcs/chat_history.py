@@ -97,6 +97,63 @@ class ChatHistoryInterface:
         else:
             logger.info("clear_chat_history: No chat history found for user %s", username)
 
+    def update_personality(self, username: str, personality: str) -> None:
+        """
+        Update or set the personality notes for a user.
+
+        Args:
+            username (str): The username to update.
+            personality (str): A text blurb representing the user's personality or conversation style.
+        """
+        history_collection = self.db['history']
+        history_collection.create_index([("username", 1)], unique=True)
+        result = history_collection.update_one(
+            {'username': username},
+            {'$set': {'personality': personality}},
+            upsert=True
+        )
+        if result.matched_count == 0:
+            logger.info("update_personality: New user %s added with personality", username)
+        else:
+            logger.info("update_personality: Updated personality for user %s", username)
+
+    def retrieve_personality(self, username: str) -> str:
+        """
+        Retrieve the personality notes for a user.
+
+        Args:
+            username (str): The username whose personality notes are to be retrieved.
+
+        Returns:
+            str: The personality text if available; otherwise, an empty string.
+        """
+        history_collection = self.db['history']
+        document = history_collection.find_one({'username': username})
+        if document and "personality" in document:
+            logger.info("retrieve_personality: Found personality for username %s", username)
+            return document["personality"]
+        else:
+            logger.info("retrieve_personality: No personality found for username %s; returning empty string", username)
+            return ""
+
+    def clear_personality(self, username: str) -> None:
+        """
+        Clear the personality notes for a specific user from the MongoDB database.
+        This operation only clears the personality blurb, leaving chat history intact.
+
+        Args:
+            username (str): The username whose personality notes should be cleared.
+        """
+        history_collection = self.db['history']
+        result = history_collection.update_one(
+            {'username': username},
+            {'$unset': {'personality': ""}}
+        )
+        if result.modified_count > 0:
+            logger.info("clear_personality: Successfully cleared personality notes for user %s", username)
+        else:
+            logger.info("clear_personality: No personality notes found for user %s", username)
+
 
 # Example usage:
 if __name__ == "__main__":

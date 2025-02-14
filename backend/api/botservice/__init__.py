@@ -61,7 +61,8 @@ class BotService(ABC):
         pass
 
     @abstractmethod
-    def choose(self, options: list[str], query: str, model: str, n: int = 1) -> list[str]:
+    def choose(self, options: list[str], query: str, model: str, choices: int = 1, n: int = 1) -> list[str] | list[
+        list[str]]:
         """
         Selects the most appropriate option(s) from a provided list, based on a query
         and a specified model, with the ability to return multiple selections if needed.
@@ -70,9 +71,13 @@ class BotService(ABC):
         options (list[str]): A list of strings representing the available options.
         query (str): A query that guides the selection process.
         model (str): The model used to evaluate and make the selection.
-        n (int, optional): The number of options to select. Defaults to 1.
+        choices (int, optional): The number of options to select. Defaults to 1.
+        n (int, optional): The number of generations to produce. Defaults to 1.
 
         Returns:
-        str: The selected option(s) from the list.
+        list[str]: The selected option(s) if `n == 1`.
+        list[list[str]]: A list of lists of selected options if `n > 1`.
         """
         pass
+
+
