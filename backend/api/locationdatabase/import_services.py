@@ -2,6 +2,7 @@
 import csv
 import glob
 import logging
+import re
 import requests
 from typing import Optional
 
@@ -17,9 +18,10 @@ from __init__ import LocationDatabase
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+csv_pattern = r"([^/]+)\.csv$"
 
 
-def populate_service_database(dir_path: str, db: LocationDatabase) -> None:
+def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
     """Populate the services database with the .csv files in the given directory.
     
     dir_path is the file path to a directory containing .csv files. Each .csv 
@@ -36,10 +38,11 @@ def populate_service_database(dir_path: str, db: LocationDatabase) -> None:
     """
     for filepath in glob.glob(dir_path + "/*.csv"):
         logger.info(f"populate_service_database: importing from file {filepath}")
-        _import_services(filepath, db)
+        match = re.search(csv_pattern, filepath)
+        _import_services(filepath, match.group(1), db)
 
 
-def _import_services(filepath: str, db: Optional[LocationDatabase]) -> None:
+def _import_services(filepath: str, service_type: str, db: LocationDatabase) -> None:
     """Insert the services within the .csv file into the given database.
 
     The csv file is structured with a header line followed by entries. Each 
@@ -51,6 +54,7 @@ def _import_services(filepath: str, db: Optional[LocationDatabase]) -> None:
 
     Args:
         filepath: The file path of the .csv file containing services.
+        service_type: The type of services contained within the csv file.
         db: The service database which is populated.
     """
     with open(filepath) as csvfile:
@@ -60,7 +64,7 @@ def _import_services(filepath: str, db: Optional[LocationDatabase]) -> None:
             for row in reader:
                 address = row[2]
                 try:
-                    geocode = geocoder.google(address, session=session, components="country:CA")
+                    geocode = geocoder.google(address, session=session)
                     if geocode.ok:
                         pprint(geocode.json)
                         region_id = _insert_regions(db,
@@ -68,16 +72,19 @@ def _import_services(filepath: str, db: Optional[LocationDatabase]) -> None:
                                                     geocode.county,
                                                     geocode.state,
                                                     geocode.country)
-                        res = _insert_service(db,
-                                              row[1],
-                                              geocode.address,
-                                              geocode.lat,
-                                              geocode.lng,
-                                              region_id,
-                                              row[3] if row[3] is not "" else None,
-                                              row[0] if row[0] is not "" else None)
+                        if region_id == -1:
+                            logger.warning(f"_import_services: could not insert region based on address, skipping...")
+                            continue
+                        res = db.insert_service(row[1], 
+                                                service_type, 
+                                                region_id, 
+                                                geocode.lat, 
+                                                geocode.lng, 
+                                                geocode.address, 
+                                                row[3], 
+                                                row[0])
                         if not res:
-                            logger.warning(f"_import_services: failed to insert address {geocode.address} from csv file {filepath}")
+                            logger.warning(f"_import_services: failed to insert address {geocode.address} from csv file {filepath}.")
                 except Exception as e:
                     logger.error(f"_import_services: {e}")
 
@@ -87,33 +94,61 @@ def _insert_regions(db: LocationDatabase,
                     county: str, 
                     province: str, 
                     country: str) -> int:
-    """..."""
-    raise NotImplementedError
+    """Insert the given city regions into the database.
 
-    # TODO: complete the region insertion part
-    if country is not "None":
-        ...
-    if province is not "None":
-        ...
-    if county is not "None":
-        ...
-    if city is not "None":
-        ...
+    The four attributes (country, province, county, city) collectively
+    describe a regional locality under several administrative areas, where
+    city is in county, county is in province, etc.
 
+    Args:
+        db: The service database which is populated.
+        city: The name of the city.
+        county: The name of the greater adminstrative area that the city is located within.
+        province: The name of the greater administrative area that the county is located within.
+        country: The name of the country that the city is in.
+    Returns:
+        int: The regionID of the inserted city if successful. If any of the administrative regions
+             could not be inserted, then -1 is returned instead.
+    """
+    country_id = db.region_id(country, "Country")
+    if country_id is None:
+        geocode = geocoder.geocode(country)
+        # XXX: we haven't defined a "superparent" id so for now 0 is used
+        res = db.insert_region(country, "Country", 0, geocode.lat, geocode.lng)
+        if not res:
+            logger.error(f"_insert_regions: Couldn't insert region {country} as a country.")
+            return -1
+        else:
+            country_id = db.region_id(country, "Country")
 
-def _insert_service(db: LocationDatabase,
-                    name: str, 
-                    address: Optional[str],
-                    lat: float,
-                    long: float,
-                    region_id: int,
-                    phone: Optional[str],
-                    website: Optional[str]) -> bool:
-    """TODO: write this docstring"""
+    province_id = db.region_id(province, "Province")
+    if province_id is None:
+        geocode = geocoder.geocode(province, component=f"country: {country}")
+        res = db.insert_region(province, "Province", country_id, geocode.lat, geocode.lng)
+        if not res:
+            logger.error(f"_insert_regions: Couldn't insert region {province} as a province.")
+            return -1
+        else:
+            province_id = db.region_id(province, "Province")
+    
+    county_id = db.region_id(county, "County")
+    if county_id is None:
+        geocode = geocoder.geocode(county, component=f"country: {country}")
+        res = db.insert_region(county, "County", province_id, geocode.lat, geocode.lng)
+        if not res:
+            logger.error(f"_insert_regions: Couldn't insert region {county} as a county.")
+            return -1
+        else:
+            county_id = db.region_id(county, "County")
 
-    # TODO: complete the service insertion part
-    raise NotImplementedError
+    city_id = db.region_id(city, "City")
+    if city_id is None:
+        geocode = geocoder.geocode(city, component=f"country: {country}")
+        res = db.insert_region(city, "City", county_id, geocode.lat, geocode.lng)
+        if not res:
+            logger.error(f"_insert_regions: Couldn't insert region {city} as a city.")
+            return -1
+        else:
+            city_id = db.region_id(city, "City")
 
-
-if __name__ == "__main__":
-    _import_services("api/servicehandler/services/csv/Education.csv")
+    return city_id

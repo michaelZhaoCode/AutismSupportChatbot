@@ -1,4 +1,5 @@
 from api.locationdatabase import LocationDatabase
+from api.locationdatabase import import_services
 from constants import REGION_TYPE_PRIORITY
 from pathlib import Path
 import sqlite3
@@ -57,6 +58,10 @@ class SQLiteLocationDatabase(LocationDatabase):
             conn.commit()
 
             logging.info("Database initialized with Regions and Services tables.")
+
+    def populate(self, dirpath: str) -> None:
+        """Populate the SQLite database with the pre-existing .csv data."""
+        import_services.populate_service_database(self, dirpath)
 
     def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> bool:
         """Inserts a region entry into the SQLite database."""
