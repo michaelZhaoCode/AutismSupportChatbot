@@ -68,6 +68,8 @@ coverage.xml
 # Ignore logs and databases
 *.log
 *.sqlite
+*.json
+*.db
 
 # Ignore other temporary files
 *.swp
