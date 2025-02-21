@@ -20,6 +20,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 csv_pattern = r"([^/]+)\.csv$"
 
+# A dictionary mapping from region names to its regionID
+region_ids = {}
 
 def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
     """Populate the services database with the .csv files in the given directory.
@@ -110,8 +112,7 @@ def _insert_regions(db: LocationDatabase,
         int: The regionID of the inserted city if successful. If any of the administrative regions
              could not be inserted, then -1 is returned instead.
     """
-    country_id = db.region_id(country, "Country")
-    if country_id is None:
+    if country not in region_ids:
         geocode = geocoder.geocode(country)
         # XXX: we haven't defined a "superparent" id so for now 0 is used
         res = db.insert_region(country, "Country", 0, geocode.lat, geocode.lng)
@@ -119,36 +120,30 @@ def _insert_regions(db: LocationDatabase,
             logger.error(f"_insert_regions: Couldn't insert region {country} as a country.")
             return -1
         else:
-            country_id = db.region_id(country, "Country")
-
-    province_id = db.region_id(province, "Province")
-    if province_id is None:
+            region_ids[country] = db.region_id(country, "Country")
+    if province not in region_ids:
         geocode = geocoder.geocode(province, component=f"country: {country}")
-        res = db.insert_region(province, "Province", country_id, geocode.lat, geocode.lng)
+        res = db.insert_region(province, "Province", region_ids[country], geocode.lat, geocode.lng)
         if not res:
             logger.error(f"_insert_regions: Couldn't insert region {province} as a province.")
             return -1
         else:
-            province_id = db.region_id(province, "Province")
-    
-    county_id = db.region_id(county, "County")
-    if county_id is None:
+            region_ids[province] = db.region_id(province, "Province")
+    if county not in region_ids:
         geocode = geocoder.geocode(county, component=f"country: {country}")
-        res = db.insert_region(county, "County", province_id, geocode.lat, geocode.lng)
+        res = db.insert_region(county, "County", region_ids[province], geocode.lat, geocode.lng)
         if not res:
             logger.error(f"_insert_regions: Couldn't insert region {county} as a county.")
             return -1
         else:
-            county_id = db.region_id(county, "County")
-
-    city_id = db.region_id(city, "City")
-    if city_id is None:
+            region_ids[county] = db.region_id(county, "County")
+    if city not in region_ids:
         geocode = geocoder.geocode(city, component=f"country: {country}")
-        res = db.insert_region(city, "City", county_id, geocode.lat, geocode.lng)
+        res = db.insert_region(city, "City", region_ids[county], geocode.lat, geocode.lng)
         if not res:
             logger.error(f"_insert_regions: Couldn't insert region {city} as a city.")
             return -1
         else:
-            city_id = db.region_id(city, "City")
+            region_ids[city] = db.region_id(city, "City")
 
-    return city_id
+    return region_ids[city]
