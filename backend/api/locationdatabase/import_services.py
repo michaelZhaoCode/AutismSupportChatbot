@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import geocoder
 from pprint import pprint
 
-from api.locationdatabase import LocationDatabase
+from api.locationdatabase import LocationDatabase, RegionAlreadyExistsException
 
 
 load_dotenv()
@@ -107,6 +107,10 @@ def _insert_regions(db: LocationDatabase,
     Returns:
         int: The regionID of the inserted city if successful. If not, then -1 is returned instead.
     """
+    if city in region_ids:
+        # we have already inserted this before, so no need to traverse
+        return region_ids[city]
+
     country_id = _insert_region(db, country, "Country", None)
     province_id = _insert_region(db, province, "Province", country_id)
     county_id = _insert_region(db, county, "County", province_id)
@@ -125,7 +129,7 @@ def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Option
         parent_id: The regionID of the greater administrative area that the region is part of.
     """
     if name == "None":
-        logger.warning(f"_insert_regions: Using default latitude and longitude (0, 0) for region {name}.")
+        logger.warning(f"_insert_regions: Using default latitude and longitude (0, 0) for null region.")
         lat, lng = 0, 0
     else:
         geocode = geocoder.google(name, maxRows=1, components="country:CA|country:US")
@@ -135,11 +139,15 @@ def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Option
             logger.error(f"_insert_regions: Couldn't determine latitude and longitude of region {name}.")
             lat, lng = 0, 0
 
-    res = db.insert_region(name, type, parent_id, lat, lng)
-    if not res:
-        logger.error(f"_insert_regions: Couldn't insert region {name} as a {type}.")
-        return None
-    else:
+    try:
+        res = db.insert_region(name, type, parent_id, lat, lng)
+        if not res:
+            logger.error(f"_insert_regions: Couldn't insert region {name} as a {type}.")
+            return None
+        else:
+            region_ids[name] = db.region_id(name, type)
+            return region_ids[name]
+    except RegionAlreadyExistsException as e:
         region_ids[name] = db.region_id(name, type)
         return region_ids[name]
 
@@ -154,3 +162,5 @@ if __name__ == "__main__":
     database.initialize_database()
 
     populate_service_database(database, "./tests/csv")
+    database.create_snapshot()
+    pprint(database.find_region_by_path("CA,ON,Toronto"))

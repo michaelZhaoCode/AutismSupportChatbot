@@ -1,4 +1,4 @@
-from api.locationdatabase import LocationDatabase
+from api.locationdatabase import LocationDatabase, RegionAlreadyExistsException
 from constants import REGION_TYPE_PRIORITY
 from pathlib import Path
 import sqlite3
@@ -67,8 +67,7 @@ class SQLiteLocationDatabase(LocationDatabase):
                 # Check if RegionName with the specified RegionType already exists
                 cursor.execute("SELECT RegionID FROM Regions WHERE RegionName = ? AND RegionType = ?", (region, region_type))
                 if cursor.fetchone():
-                    print(f"Error: Region '{region}' with type '{region_type}' already exists.")
-                    return False
+                    raise RegionAlreadyExistsException("Region '{region}' with type '{region_type}' already exists.")
 
                 # Check if ParentRegionID exists if provided
                 if parent_id is not None:
@@ -88,6 +87,8 @@ class SQLiteLocationDatabase(LocationDatabase):
                 return True
         except sqlite3.Error as e:
             logging.error(f"Database error: {e}")
+        except RegionAlreadyExistsException:
+            raise RegionAlreadyExistsException
         except Exception as e:
             logging.error(f"An error occurred: {e}")
 
