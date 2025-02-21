@@ -10,10 +10,7 @@ from dotenv import load_dotenv
 import geocoder
 from pprint import pprint
 
-# XXX: don't know why this works but
-# from locationdatabase import LocationDatabase doesn't
-# or from . import LocationDatabase
-from __init__ import LocationDatabase  
+from api.locationdatabase import LocationDatabase
 
 
 load_dotenv()
@@ -68,7 +65,6 @@ def _import_services(filepath: str, service_type: str, db: LocationDatabase) -> 
                 try:
                     geocode = geocoder.google(address, session=session)
                     if geocode.ok:
-                        pprint(geocode.json)
                         region_id = _insert_regions(db,
                                                     geocode.city,
                                                     geocode.county,
@@ -109,41 +105,52 @@ def _insert_regions(db: LocationDatabase,
         province: The name of the greater administrative area that the county is located within.
         country: The name of the country that the city is in.
     Returns:
-        int: The regionID of the inserted city if successful. If any of the administrative regions
-             could not be inserted, then -1 is returned instead.
+        int: The regionID of the inserted city if successful. If not, then -1 is returned instead.
     """
-    if country not in region_ids:
-        geocode = geocoder.geocode(country)
-        # XXX: we haven't defined a "superparent" id so for now 0 is used
-        res = db.insert_region(country, "Country", 0, geocode.lat, geocode.lng)
-        if not res:
-            logger.error(f"_insert_regions: Couldn't insert region {country} as a country.")
-            return -1
-        else:
-            region_ids[country] = db.region_id(country, "Country")
-    if province not in region_ids:
-        geocode = geocoder.geocode(province, component=f"country: {country}")
-        res = db.insert_region(province, "Province", region_ids[country], geocode.lat, geocode.lng)
-        if not res:
-            logger.error(f"_insert_regions: Couldn't insert region {province} as a province.")
-            return -1
-        else:
-            region_ids[province] = db.region_id(province, "Province")
-    if county not in region_ids:
-        geocode = geocoder.geocode(county, component=f"country: {country}")
-        res = db.insert_region(county, "County", region_ids[province], geocode.lat, geocode.lng)
-        if not res:
-            logger.error(f"_insert_regions: Couldn't insert region {county} as a county.")
-            return -1
-        else:
-            region_ids[county] = db.region_id(county, "County")
-    if city not in region_ids:
-        geocode = geocoder.geocode(city, component=f"country: {country}")
-        res = db.insert_region(city, "City", region_ids[county], geocode.lat, geocode.lng)
-        if not res:
-            logger.error(f"_insert_regions: Couldn't insert region {city} as a city.")
-            return -1
-        else:
-            region_ids[city] = db.region_id(city, "City")
+    country_id = _insert_region(db, country, "Country", None)
+    province_id = _insert_region(db, province, "Province", country_id)
+    county_id = _insert_region(db, county, "County", province_id)
+    city_id = _insert_region(db, city, "City", county_id)
+    
+    return city_id if city_id is not None else -1
 
-    return region_ids[city]
+
+def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Optional[int]):
+    """Insert the given regions into the database.
+    
+    Args:
+        db: The service database which is populated.
+        name: The name of the region.
+        type: The region type, e.g. city, county, province, or country.
+        parent_id: The regionID of the greater administrative area that the region is part of.
+    """
+    if name == "None":
+        logger.warning(f"_insert_regions: Using default latitude and longitude (0, 0) for region {name}.")
+        lat, lng = 0, 0
+    else:
+        geocode = geocoder.google(name, maxRows=1, components="country:CA|country:US")
+        if geocode.ok and geocode.lat is not None and geocode.lng is not None:
+            lat, lng = geocode.lat, geocode.lng
+        else:
+            logger.error(f"_insert_regions: Couldn't determine latitude and longitude of region {name}.")
+            lat, lng = 0, 0
+
+    res = db.insert_region(name, type, parent_id, lat, lng)
+    if not res:
+        logger.error(f"_insert_regions: Couldn't insert region {name} as a {type}.")
+        return None
+    else:
+        region_ids[name] = db.region_id(name, type)
+        return region_ids[name]
+
+
+if __name__ == "__main__":
+    # example usage. To execute, run the command
+    # python -m api.locationdatabase.import_services
+    # in the backend/ directory.
+    from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
+
+    database = SQLiteLocationDatabase()
+    database.initialize_database()
+
+    populate_service_database(database, "./tests/csv")
