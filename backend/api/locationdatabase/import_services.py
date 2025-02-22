@@ -6,19 +6,13 @@ import re
 import requests
 from typing import Optional
 
-from dotenv import load_dotenv
 import geocoder
-from pprint import pprint
 
 from api.locationdatabase import LocationDatabase, RegionAlreadyExistsException
 
-
-load_dotenv()
 logger = logging.getLogger(__name__)
-csv_pattern = r"([^/]+)\.csv$"
-
-# A dictionary mapping from region names to its regionID
-region_ids = {}
+region_ids = {}  # A dictionary mapping from region names to its regionID
+CSV_PATTERN = r"([^/]+)\.csv$"
 
 def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
     """Populate the services database with the .csv files in the given directory.
@@ -37,7 +31,7 @@ def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
     """
     for filepath in glob.glob(dir_path + "/*.csv"):
         logger.info(f"populate_service_database: importing from file {filepath}")
-        match = re.search(csv_pattern, filepath)
+        match = re.search(CSV_PATTERN, filepath)
         _import_services(filepath, match.group(1), db)
 
 
@@ -107,19 +101,24 @@ def _insert_regions(db: LocationDatabase,
     Returns:
         int: The regionID of the inserted city if successful. If not, then -1 is returned instead.
     """
-    if city in region_ids:
-        # we have already inserted this before, so no need to traverse
-        return region_ids[city]
+    region_order = [(country, "Country"), (province, "Province"), (county, "County"), (city, "City")]
+    prev_id, parent_id = -1, None
 
-    country_id = _insert_region(db, country, "Country", None)
-    province_id = _insert_region(db, province, "Province", country_id)
-    county_id = _insert_region(db, county, "County", province_id)
-    city_id = _insert_region(db, city, "City", county_id)
-    
-    return city_id if city_id is not None else -1
+    for region, type in region_order:
+        if region is None:
+            continue
+        elif region in region_ids:
+            prev_id = region_ids[region]
+        else:
+            prev_id = _insert_region(db, region, type, parent_id)
+        
+        if prev_id != -1:
+            parent_id = prev_id
+
+    return prev_id
 
 
-def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Optional[int]):
+def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Optional[int]) -> int:
     """Insert the given regions into the database.
     
     Args:
@@ -127,37 +126,39 @@ def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Option
         name: The name of the region.
         type: The region type, e.g. city, county, province, or country.
         parent_id: The regionID of the greater administrative area that the region is part of.
+
+    Returns:
+        int: The id of the inserted region, or -1 if the insertion failed.
     """
-    if name == "None":
-        logger.warning(f"_insert_regions: Using default latitude and longitude (0, 0) for null region.")
-        lat, lng = 0, 0
+    geocode = geocoder.google(name, maxRows=1, components="country:CA")
+    if geocode.ok and geocode.lat is not None and geocode.lng is not None:
+        lat, lng = geocode.lat, geocode.lng
     else:
-        geocode = geocoder.google(name, maxRows=1, components="country:CA|country:US")
-        if geocode.ok and geocode.lat is not None and geocode.lng is not None:
-            lat, lng = geocode.lat, geocode.lng
-        else:
-            logger.error(f"_insert_regions: Couldn't determine latitude and longitude of region {name}.")
-            lat, lng = 0, 0
+        logger.error(f"_insert_regions: Couldn't determine latitude and longitude of region {name}.")
+        lat, lng = 0, 0
 
     try:
-        res = db.insert_region(name, type, parent_id, lat, lng)
-        if not res:
-            logger.error(f"_insert_regions: Couldn't insert region {name} as a {type}.")
-            return None
-        else:
+        if db.insert_region(name, type, parent_id, lat, lng):
             region_ids[name] = db.region_id(name, type)
             return region_ids[name]
+        else:
+            logger.error(f"_insert_regions: Couldn't insert region {name} as a {type}.")
+            return -1 
     except RegionAlreadyExistsException as e:
         region_ids[name] = db.region_id(name, type)
         return region_ids[name]
 
 
 if __name__ == "__main__":
-    # example usage. To execute, run the command
+    # Example usage. To execute, run the command
     # python -m api.locationdatabase.import_services
     # in the backend/ directory.
-    from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
+    from dotenv import load_dotenv
+    from pprint import pprint
 
+    from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
+    
+    load_dotenv()
     database = SQLiteLocationDatabase()
     database.initialize_database()
 
