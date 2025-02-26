@@ -1,14 +1,65 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import textwrap
+import time
+import geocoder
+import requests
+import json
+
+DEFAULT_NAME = "User"
+DEFAULT_TYPE = "Adult"
+DEFAULT_LOCATION = ""
+
+USER_IMAGE = "user.png"
+BOT_IMAGE = "chatbot.png"
+LOADING_IMAGE = "loading.gif"
+
+URL = "http://127.0.0.1:5000"
+
+LOADING_DELAY = 0
+
+SCRIPTED_RESPONSES = [
+]
 
 
-def request_api(user_message: str) -> str:
+def request_api(message: str, location="") -> str:
     """
     Simulates sending an API request to a chatbot.
     For now, returns a constant response.
     """
-    return "This is a constant response from the chatbot."
+    if SCRIPTED_RESPONSES:
+        time.sleep(2)
+        return SCRIPTED_RESPONSES.pop(0)
+    else:
+        url = f'{URL}/generate'
+
+        if location == "":
+            location = geocoder.ip("me").latlng
+
+        data = {
+            'username': DEFAULT_NAME,
+            'message': message,
+            'usertype': DEFAULT_TYPE,
+            'location': location,
+            'region_id': -1
+        }
+
+        json_data = json.dumps(data)
+        try:
+            response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
+        except requests.exceptions.ConnectionError:
+            return "Error, no connection"
+        if response.status_code == 200:
+            # Print the JSON response from the server
+            response_data = response.json()
+
+            # Access and print the specific part of the response, i.e., the response from the chat function
+            print('Response from server:', response_data['response'])
+            return response_data['response']
+        else:
+            # Print the error
+            print('Failed to get a valid response:', response.status_code, response.text)
+            return "Error"
 
 
 def format_message(role: str, message: str) -> str:
