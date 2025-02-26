@@ -13,6 +13,7 @@ from api.locationdatabase import LocationDatabase, RegionAlreadyExistsException
 logger = logging.getLogger(__name__)
 region_ids = {}  # A dictionary mapping from region names to its regionID
 CSV_PATTERN = r"([^/]+)\.csv$"
+DEFAULT_LAT_LONG = (60.000, -95.00)  # default lat, long coordinates for Canada
 
 def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
     """Populate the services database with the .csv files in the given directory.
@@ -77,6 +78,8 @@ def _import_services(filepath: str, service_type: str, db: LocationDatabase) -> 
                                                 row[0])
                         if not res:
                             logger.warning(f"_import_services: failed to insert address {geocode.address} from csv file {filepath}.")
+                    else:
+                        logger.warning(f"_import_services: Geocoding failed, skipping...")
                 except Exception as e:
                     logger.error(f"_import_services: {e}")
 
@@ -135,7 +138,7 @@ def _insert_region(db: LocationDatabase, name: str, type: str, parent_id: Option
         lat, lng = geocode.lat, geocode.lng
     else:
         logger.error(f"_insert_regions: Couldn't determine latitude and longitude of region {name}.")
-        lat, lng = 0, 0
+        lat, lng = DEFAULT_LAT_LONG
 
     try:
         if db.insert_region(name, type, parent_id, lat, lng):
@@ -161,6 +164,7 @@ if __name__ == "__main__":
     load_dotenv()
     database = SQLiteLocationDatabase()
     database.initialize_database()
+    database.clear_database()
 
     populate_service_database(database, "./tests/csv")
     database.create_snapshot()
