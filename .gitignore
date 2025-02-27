@@ -4,6 +4,7 @@ venv/
 pdfs
 pdfs/
 \pdfs
+.pylintrc
 
 # Ignore Mac system files
 .DS_Store
