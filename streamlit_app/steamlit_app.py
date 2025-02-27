@@ -5,6 +5,8 @@ import time
 import geocoder
 import requests
 import json
+import base64
+import os
 
 DEFAULT_NAME = "User"
 DEFAULT_TYPE = "Adult"
@@ -19,23 +21,31 @@ URL = "http://127.0.0.1:5000"
 LOADING_DELAY = 0
 
 SCRIPTED_RESPONSES = [
+    "Hi"
 ]
+
+
+def get_base64_image(image_path):
+    """Return base64 encoded image if exists, else None."""
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as img_file:
+            data = base64.b64encode(img_file.read()).decode()
+            return data
+    else:
+        return None
 
 
 def request_api(message: str, location="") -> str:
     """
-    Simulates sending an API request to a chatbot.
-    For now, returns a constant response.
+    Sends an API request to a chatbot.
     """
     if SCRIPTED_RESPONSES:
         time.sleep(2)
         return SCRIPTED_RESPONSES.pop(0)
     else:
         url = f'{URL}/generate'
-
         if location == "":
             location = geocoder.ip("me").latlng
-
         data = {
             'username': DEFAULT_NAME,
             'message': message,
@@ -43,21 +53,16 @@ def request_api(message: str, location="") -> str:
             'location': location,
             'region_id': -1
         }
-
         json_data = json.dumps(data)
         try:
             response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
         except requests.exceptions.ConnectionError:
             return "Error, no connection"
         if response.status_code == 200:
-            # Print the JSON response from the server
             response_data = response.json()
-
-            # Access and print the specific part of the response, i.e., the response from the chat function
             print('Response from server:', response_data['response'])
             return response_data['response']
         else:
-            # Print the error
             print('Failed to get a valid response:', response.status_code, response.text)
             return "Error"
 
@@ -65,7 +70,6 @@ def request_api(message: str, location="") -> str:
 def format_message(role: str, message: str) -> str:
     """
     Returns an HTML-formatted string for the given message.
-    Each message is wrapped in a full-width container.
     """
     if role == "user":
         return f"""
@@ -93,7 +97,6 @@ def render_chat_history(chat_history):
     for role, message in chat_history:
         chat_history_content += format_message(role, message)
 
-    # Combine the chat container and auto-scroll script into a single HTML block.
     chat_history_html = textwrap.dedent(f"""\
     <html>
     <head>
@@ -104,14 +107,14 @@ def render_chat_history(chat_history):
           padding: 0;
         }}
         .chat-container {{
-          border: 2px solid #333;          /* Dark grey border */
-          border-radius: 10px;              /* Rounded border */
+          border: 2px solid #333;
+          border-radius: 10px;
           padding: 10px;
           height: 400px;
           overflow-y: auto;
           margin-bottom: 20px;
         }}
-        /* WebKit scrollbar styling (if needed) */
+        /* WebKit scrollbar styling */
         .chat-container::-webkit-scrollbar {{
           width: 10px;
         }}
@@ -139,7 +142,6 @@ def render_chat_history(chat_history):
         <div style="clear: both;"></div>
       </div>
       <script>
-        // Auto-scroll to the bottom of the chat container.
         var chatHistory = document.getElementById("chat-history");
         if(chatHistory) {{
           chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -154,15 +156,13 @@ def render_chat_history(chat_history):
 def main():
     st.title("Chatbot App")
 
-    # Custom CSS to override the default red focus border on the input element.
     st.markdown("""
     <style>
-    /* Target the input container when it has focus (via its child element) */
+    /* Override default red focus border on input */
     div[data-baseweb="input"]:focus-within {
         border-color: #ccc !important;
         box-shadow: none !important;
     }
-    /* Also target the input itself on focus */
     div[data-baseweb="input"] input:focus, div[data-baseweb="input"] textarea:focus {
         outline: none !important;
         box-shadow: none !important;
@@ -171,24 +171,34 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    base64_image = get_base64_image(LOADING_IMAGE)
+
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
 
-    # Create a placeholder for the chat history.
     chat_placeholder = st.empty()
 
-    # Create the input form below the chat history.
     with st.form(key="chat_form", clear_on_submit=True):
         user_message = st.text_input("Enter your message:")
         submit_button = st.form_submit_button("Send")
 
     if submit_button and user_message:
+        # Append user's message.
         st.session_state["chat_history"].append(("user", user_message))
-        response = request_api(user_message)
-        st.session_state["chat_history"].append(("bot", response))
+        # Append a temporary loading message.
+        loading_message = f'<img src="data:image/gif;base64,{base64_image}" alt="loading" style="width:50px;height:50px;">'
+        st.session_state["chat_history"].append(("bot", loading_message))
+        # Immediately update the chat display.
+        chat_history_html = render_chat_history(st.session_state["chat_history"])
+        with chat_placeholder:
+            components.html(chat_history_html, height=440)
+        # Display a spinner while waiting for the API response.
+        with st.spinner("Waiting for response..."):
+            response = request_api(user_message)
+        # Replace the loading message with the actual response.
+        st.session_state["chat_history"][-1] = ("bot", response)
 
     chat_history_html = render_chat_history(st.session_state["chat_history"])
-
     with chat_placeholder:
         components.html(chat_history_html, height=440)
 
