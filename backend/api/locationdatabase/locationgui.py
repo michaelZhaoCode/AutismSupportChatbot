@@ -236,7 +236,13 @@ class LocationGUI(tk.Tk):
             return
 
         # Call the database method to insert the new region
-        success = self.database.insert_region(name, region_type, parent_id, latitude, longitude)
+        try:
+            success = self.database.insert_region(name, region_type, parent_id, latitude, longitude)
+        except Exception as e:
+            # XXX: temporary solution to using exceptions to inform the caller what
+            #      kind of failure occurred
+            self.display_message(e + "Please try again.")
+            return
 
         if success:
             self.add_region_to_list(name, region_type, parent_id, latitude, longitude)
