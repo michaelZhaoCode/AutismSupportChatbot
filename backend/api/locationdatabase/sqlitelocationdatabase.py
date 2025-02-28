@@ -452,6 +452,12 @@ class SQLiteLocationDatabase(LocationDatabase):
                 cursor.execute("DELETE FROM Services")
                 cursor.execute("DELETE FROM Regions")
 
+                # Reset ID count to 0
+                cursor.execute("UPDATE SQLITE_SEQUENCE SET SEQ=0 "
+"WHERE NAME='Services'")
+                cursor.execute("UPDATE SQLITE_SEQUENCE SET SEQ=0 "
+                "WHERE NAME='Regions'")
+
                 conn.commit()
                 print("All entries in the database were cleared successfully.")
         except sqlite3.Error as e:
