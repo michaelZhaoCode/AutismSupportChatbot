@@ -73,10 +73,9 @@ def test_service_types(populated_small_database):
     ("CA", "BC", "Metro Vancouver", "Langley")
 ])
 def test_all_paths(inserted_regions, path):
-    assert all(region in inserted_regions for region in path)
-
     for i in range(len(path)):
         region = inserted_regions[path[i]]
+        assert region in inserted_regions
         if i == 0:
             assert region["ParentRegionID"] is None
         else:
