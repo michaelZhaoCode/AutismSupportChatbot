@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring, redefined-outer-name
 import pytest
 
 from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
@@ -49,7 +50,7 @@ def test_all_services(inserted_services, service):
 
 
 def test_valid_regions(region_ids, populated_small_database):
-    assert all(service["RegionID"] in region_ids 
+    assert all(service["RegionID"] in region_ids
                for service in populated_small_database.find_all_services())
 
 

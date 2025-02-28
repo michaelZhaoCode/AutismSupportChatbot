@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring, redefined-outer-name
 import os
 
 from openai import OpenAI
