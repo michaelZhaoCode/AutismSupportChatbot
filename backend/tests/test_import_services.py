@@ -37,7 +37,12 @@ def inserted_services(populated_small_database):
 @pytest.mark.parametrize("service", [
     "ABC Dental",
     "Alderlea Dental Health Centre",
-    "Applebay Family Dental"
+    "Applebay Family Dental",
+    "ABC Solutions Inc.",
+    "Aboriginal Family Centre",
+    "Access Learning",
+    "ACCESS Speech & Language Services",
+    "Accomplished Learning Centre"
 ])
 def test_all_services(inserted_services, service):
     assert service in inserted_services
@@ -49,7 +54,9 @@ def test_valid_regions(region_ids, populated_small_database):
 
 
 def test_service_types(populated_small_database):
-    assert populated_small_database.get_all_service_types() == ["Dentist"]
+    service_types = populated_small_database.get_all_service_types()
+    assert all(service_type in {"Dentist", "Education"}
+               for service_type in service_types)
 
 
 @pytest.mark.parametrize("path", [
@@ -57,7 +64,12 @@ def test_service_types(populated_small_database):
     ("CA", "YT", "Whitehorse"),
     ("CA", "BC", "Fraser Valley", "Mission"),
     ("CA", "BC", "Cowichan Valley", "Duncan"),
-    ("CA", "ON", "Regional Municipality of Niagara", "Niagara Falls")
+    ("CA", "ON", "Regional Municipality of Niagara", "Niagara Falls"),
+    ("CA", "QC", "Montréal", "Dollard-des-Ormeaux"),
+    ("CA", "NL", "Happy Valley-Goose Bay"),
+    ("CA", "ON", "Simcoe County", "Barrie"),
+    ("CA", "BC", "CRD", "Victoria"),
+    ("CA", "BC", "Metro Vancouver", "Langley")
 ])
 def test_all_paths(inserted_regions, path):
     assert all(region in inserted_regions for region in path)
