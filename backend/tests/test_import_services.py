@@ -16,22 +16,22 @@ def populated_small_database():
 
     db.clear_database()
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def inserted_regions(populated_small_database):
-    return {region["RegionName"] :
-            {key : region[key] for key in region.keys() if key != "RegionName"}
-            for region in populated_small_database.find_all_regions()}
+    return {region["RegionName"] : {key : region[key] for key in region.keys()
+                                    if key != "RegionName"}
+             for region in populated_small_database.find_all_regions()}
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def region_ids(populated_small_database):
     return {region["RegionID"]
             for region in populated_small_database.find_all_regions()}
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def inserted_services(populated_small_database):
-    return {(service["ServiceName"]) :
-                {key : service[key] for key in service.keys()
-                 if key != "ServiceName"}
+    return {service["ServiceName"] : {key : service[key]
+                                      for key in service.keys()
+                                      if key != "ServiceName"}
             for service in populated_small_database.find_all_services()}
 
 
@@ -56,7 +56,7 @@ def test_valid_regions(region_ids, populated_small_database):
 
 def test_service_types(populated_small_database):
     service_types = populated_small_database.get_all_service_types()
-    assert all(service_type in {"Dentist", "Education"}
+    assert all(service_type == "Dentist" or service_type == "Education"
                for service_type in service_types)
 
 
@@ -74,8 +74,8 @@ def test_service_types(populated_small_database):
 ])
 def test_all_paths(inserted_regions, path):
     for i in range(len(path)):
+        assert path[i] in inserted_regions  # region has been inserted
         region = inserted_regions[path[i]]
-        assert region in inserted_regions
         if i == 0:
             assert region["ParentRegionID"] is None
         else:
