@@ -77,7 +77,8 @@ def _import_services(filepath: str,
                                                 geocode.country)
                     if region_id == -1:
                         logger.warning("_import_services: could not insert "
-                                       "region based on address, skipping...")
+                                       "region based on address, skipping "
+                                       "service")
                         continue
                     res = db.insert_service(row[1],
                                             service_type,
@@ -92,8 +93,8 @@ def _import_services(filepath: str,
                                        "address %s from csv file %s.",
                                        geocode.address, filepath)
                 else:
-                    logger.warning("_import_services: "
-                                   "Geocoding failed, skipping...")
+                    logger.warning("_import_services: geocoder: %s, "
+                                   "skipping service", geocode.status)
             except RequestException as e:
                 logger.error("_import_services: %s", e)
 

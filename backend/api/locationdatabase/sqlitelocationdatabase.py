@@ -67,7 +67,7 @@ class SQLiteLocationDatabase(LocationDatabase):
                 # Check if RegionName with the specified RegionType already exists
                 cursor.execute("SELECT RegionID FROM Regions WHERE RegionName = ? AND RegionType = ?", (region, region_type))
                 if cursor.fetchone():
-                    raise RegionAlreadyExistsException("Region '{region}' with type '{region_type}' already exists.")
+                    raise RegionAlreadyExistsException(f"Region '{region}' with type '{region_type}' already exists.")
 
                 # Check if ParentRegionID exists if provided
                 if parent_id is not None:
@@ -85,12 +85,12 @@ class SQLiteLocationDatabase(LocationDatabase):
                 conn.commit()
                 print(f"Region '{region}' of type '{region_type}' inserted successfully.")
                 return True
+        except RegionAlreadyExistsException as e:
+            raise RegionAlreadyExistsException from e
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
-        except RegionAlreadyExistsException:
-            raise RegionAlreadyExistsException
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
     def insert_province(self, province: str, country_id: int, latitude: float, longitude: float) -> bool:
         """Inserts a province entry into the SQLite database."""
@@ -124,9 +124,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                     f"Service '{service}' of type '{service_type}' inserted successfully in region with ID '{region_id}'.")
                 return True
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
     def find_services_in(self, region_id: int, service_type: str) -> list[dict]:
         """Finds services of a specified type available within a region and its subregions in the SQLite database."""
@@ -158,10 +158,10 @@ class SQLiteLocationDatabase(LocationDatabase):
                 services = [dict(zip(columns, row)) for row in cursor.fetchall()]
                 return services
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
             return []
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %s", e)
             return []
 
     # Private helper method for retrieving descendants
@@ -205,9 +205,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 rows = cursor.fetchall()
                 regions = [dict(zip(columns, row)) for row in rows]
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
         return regions
 
@@ -275,10 +275,10 @@ class SQLiteLocationDatabase(LocationDatabase):
                 }
 
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
             return {}
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
             return {}
 
     def find_region_by_id(self, region_id: int) -> dict:
@@ -314,9 +314,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                     print(f"Region with ID '{region_id}' not found.")
                     return {}
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
         return {}
 
@@ -357,9 +357,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 rows = cursor.fetchall()
                 services = [dict(zip(columns, row)) for row in rows]
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
         return services
 
@@ -382,9 +382,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 # Extract service types into a list
                 service_types = [row[0] for row in rows]
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
         return service_types
 
@@ -406,10 +406,10 @@ class SQLiteLocationDatabase(LocationDatabase):
                 print(f"Region with ID '{region_id}' and all its subregions were removed successfully.")
                 return True
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
-
+            logging.error("An error occurred: %e", e)
+    
     # Private helper method for deleting a region and its descendants
     def _delete_region_and_descendants(self, region_id: int, cursor) -> None:
         """Deletes a region and all its descendant regions, along with associated services."""
@@ -438,9 +438,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 print(f"Service with ID '{service_id}' was removed successfully.")
                 return True
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
     def clear_database(self) -> None:
         """Clears all entries from the SQLite database."""
@@ -461,9 +461,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 conn.commit()
                 print("All entries in the database were cleared successfully.")
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
     def create_snapshot(self) -> None:
         """
@@ -512,7 +512,7 @@ class SQLiteLocationDatabase(LocationDatabase):
 
             logging.info("Snapshot created successfully.")
         except Exception as e:
-            logging.error(f"An error occurred while creating the snapshot: {e}")
+            logging.error("An error occurred while creating the snapshot: %s", e)
 
     def load_snapshot(self) -> dict:
         """
@@ -536,7 +536,7 @@ class SQLiteLocationDatabase(LocationDatabase):
             logging.error("Error decoding the snapshot file. It may be corrupted.")
             return {}
         except Exception as e:
-            logging.error(f"An error occurred while loading the snapshot: {e}")
+            logging.error("An error occurred while loading the snapshot: %s", e)
             return {}
         
     def region_id(self, region, region_type):
@@ -549,9 +549,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 res = cursor.fetchone()
                 return res[0] if res else None
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
         
     
     def service_id(self, lat, lng):
@@ -564,9 +564,9 @@ class SQLiteLocationDatabase(LocationDatabase):
                 res = cursor.fetchone()
                 return res[0] if res else None
         except sqlite3.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error("Database error: %s", e)
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logging.error("An error occurred: %e", e)
 
     def get_last_inserted_region_id(self) -> int:
         """Retrieves the ID of the last inserted region."""
