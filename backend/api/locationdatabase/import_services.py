@@ -5,6 +5,7 @@ import csv
 import glob
 import logging
 import re
+import time
 from typing import Optional
 
 import requests
@@ -20,7 +21,10 @@ logger = logging.getLogger(__name__)
 region_ids = {}  # A dictionary mapping from region names to its regionID
 
 
-def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
+def populate_service_database(
+    db: LocationDatabase,
+    dir_path: str
+) -> tuple[int, int]:
     """Populate the services database with the .csv files in the given 
     directory.
     
@@ -32,22 +36,37 @@ def populate_service_database(db: LocationDatabase, dir_path: str) -> None:
         3. address: The physical address of the service; and
         4. phone: The phone number of the service.
 
+    Returns:
+        A tuple (agg_processed, agg_failures).
+        agg_processed: The total number of processed services.
+        agg_failures: The total number of failures.
+
     Args:
         dir_path: The file path to the directory.
         db: The service database which is populated.
     """
+    agg_processed, agg_failures = 0, 0
+
     with requests.Session() as session:
         for filepath in glob.glob(dir_path + "/*.csv"):
             logger.info("populate_service_database: importing from file %s",
                         filepath)
             match = re.search(CSV_PATTERN, filepath)
-            _import_services(filepath, match.group(1), db, session)
+            processed, failures = _import_services(filepath,
+                                                   match.group(1),
+                                                   db,
+                                                   session)
+            agg_processed += processed
+            agg_failures += failures
+
+    return agg_processed, agg_failures
+
 
 
 def _import_services(filepath: str,
                      service_type: str,
                      db: LocationDatabase,
-                     session: requests.Session) -> None:
+                     session: requests.Session) -> tuple[int, int]:
     """Insert the services within the .csv file into the given database.
 
     The csv file is structured with a header line followed by entries. Each 
@@ -57,11 +76,18 @@ def _import_services(filepath: str,
         3. address: The physical address of the service; and
         4. phone: The phone number of the service.
 
+    Returns:
+        A tuple (processed, failures).
+        failures: The number of services that failed to process for any reason.
+        processed: The total number of services processed, failed or not.
+
     Args:
         filepath: The file path of the .csv file containing services.
         service_type: The type of services contained within the csv file.
         db: The service database which is populated.
     """
+    processed, failures = 0, 0
+
     with open(filepath, mode="r", encoding="UTF-8") as csvfile:
         reader = csv.reader(csvfile)
         next(reader)  # skip header line
@@ -95,8 +121,12 @@ def _import_services(filepath: str,
                 else:
                     logger.warning("_import_services: geocoder: %s, "
                                    "skipping service", geocode.status)
+                    failures += 1
+                processed += 1
             except RequestException as e:
                 logger.error("_import_services: %s", e)
+
+    return processed, failures
 
 
 def _insert_regions(db: LocationDatabase,
@@ -194,6 +224,12 @@ if __name__ == "__main__":
     database.initialize_database()
     database.clear_database()
 
-    populate_service_database(database, "./tests/csv")
+    start = time.time()
+    processed_services, failed = populate_service_database(database,
+                                                            "./tests/csv")
     database.create_snapshot()
+    end = time.time()
     pprint(database.find_region_by_path("CA,ON,Toronto"))
+    print(f"Time taken for {processed_services} entries: {(end - start)}")
+    print(f"Number of failures was {failed} with a "
+          f"total failure rate of {(failed / processed_services) * 100}%")
