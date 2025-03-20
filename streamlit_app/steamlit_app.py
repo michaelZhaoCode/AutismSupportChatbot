@@ -21,7 +21,6 @@ URL = "http://127.0.0.1:5000"
 LOADING_DELAY = 0
 
 SCRIPTED_RESPONSES = [
-    "Hi"
 ]
 
 
@@ -35,7 +34,7 @@ def get_base64_image(image_path):
         return None
 
 
-def request_api(message: str, location="") -> str:
+def request_api(message: str, user_type: str, location: str, region_id: int) -> str:
     """
     Sends an API request to a chatbot.
     """
@@ -49,12 +48,14 @@ def request_api(message: str, location="") -> str:
         data = {
             'username': DEFAULT_NAME,
             'message': message,
-            'usertype': DEFAULT_TYPE,
+            'usertype': user_type,
             'location': location,
-            'region_id': -1
+            'region_id': region_id
         }
         json_data = json.dumps(data)
         try:
+            print(f"[DEBUG] Sending API request to {url} with data: {json_data}")
+
             response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
         except requests.exceptions.ConnectionError:
             return "Error, no connection"
@@ -153,6 +154,46 @@ def render_chat_history(chat_history):
     return chat_history_html
 
 
+def retrieve_regions_and_save():
+    url = f'{URL}/retrieve_regions'
+    try:
+        response = requests.get(url)
+    except requests.exceptions.ConnectionError as e:
+        print("Error, no connection")
+        return
+    if response.status_code == 200:
+        response_data = response.json()
+        with open('regions_data.json', 'w') as json_file:
+            json.dump(response_data['response'], json_file, indent=4)
+        print("Regions data successfully saved to regions_data.json")
+    else:
+        print('Failed to retrieve regions:', response.status_code, response.text)
+
+
+def load_regions_data() -> list:
+    try:
+        with open('regions_data.json', 'r') as json_file:
+            regions_data = json.load(json_file)
+        return regions_data
+    except FileNotFoundError:
+        print("No regions data found. Please make sure to retrieve and save the data first.")
+        return []
+
+
+# Callback function for automatic region selection
+def update_region():
+    # Get the selected option from session_state (set by the selectbox)
+    selected_option = st.session_state.get("region_dropdown")
+    # Ignore if the default prompt is still selected.
+    if selected_option == "Choose Next Bound":
+        return
+    selected_region = next((region for region in st.session_state["current_options"]
+                            if region["region_name"] == selected_option), None)
+    if selected_region:
+        st.session_state["region_path"].append(selected_region)
+        st.session_state["current_options"] = selected_region.get("subregions", [])
+
+
 def main():
     st.title("Chatbot App")
 
@@ -171,6 +212,44 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    # ---------------------------
+    # Region Filter Widget
+    # ---------------------------
+
+    # Initialize session state variables for region filtering.
+    if "region_path" not in st.session_state:
+        st.session_state["region_path"] = []  # List to store selected region objects.
+    if "current_options" not in st.session_state:
+        st.session_state["current_options"] = load_regions_data()  # Start with top-level regions.
+
+    # Display uneditable current region field.
+    if st.session_state["region_path"]:
+        region_path_str = " > ".join([region["region_name"] for region in st.session_state["region_path"]])
+    else:
+        region_path_str = "No Region Bound"
+    st.text_input("Current Region", value=region_path_str, disabled=True)
+
+    # Prepare dropdown options with a default prompt.
+    options = ["Choose Next Bound"] + [region["region_name"] for region in st.session_state["current_options"]] if st.session_state["current_options"] else []
+    if options:
+        st.selectbox("Choose Next Bound", options, key="region_dropdown", on_change=update_region, label_visibility="collapsed")
+    else:
+        st.write("No further regions available.")
+
+    if st.button("Reset Region Selection"):
+        st.session_state["region_path"] = []
+        st.session_state["current_options"] = load_regions_data()
+        st.rerun()
+
+    # Determine the region_id to send (last selected region's id, or -1 if none)
+    if st.session_state["region_path"]:
+        region_id = st.session_state["region_path"][-1]["region_id"]
+    else:
+        region_id = -1
+
+    # ---------------------------
+    # Chat Interface
+    # ---------------------------
     base64_image = get_base64_image(LOADING_IMAGE)
 
     if "chat_history" not in st.session_state:
@@ -180,22 +259,19 @@ def main():
 
     with st.form(key="chat_form", clear_on_submit=True):
         user_message = st.text_input("Enter your message:")
+        user_type_input = st.text_input("Enter your user type:", value=DEFAULT_TYPE)
+        location_input = st.text_input("Enter your location:", value=DEFAULT_LOCATION)
         submit_button = st.form_submit_button("Send")
 
     if submit_button and user_message:
-        # Append user's message.
         st.session_state["chat_history"].append(("user", user_message))
-        # Append a temporary loading message.
         loading_message = f'<img src="data:image/gif;base64,{base64_image}" alt="loading" style="width:50px;height:50px;">'
         st.session_state["chat_history"].append(("bot", loading_message))
-        # Immediately update the chat display.
         chat_history_html = render_chat_history(st.session_state["chat_history"])
         with chat_placeholder:
             components.html(chat_history_html, height=440)
-        # Display a spinner while waiting for the API response.
         with st.spinner("Waiting for response..."):
-            response = request_api(user_message)
-        # Replace the loading message with the actual response.
+            response = request_api(user_message, user_type_input, location_input, region_id)
         st.session_state["chat_history"][-1] = ("bot", response)
 
     chat_history_html = render_chat_history(st.session_state["chat_history"])
@@ -204,4 +280,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Only retrieve regions once per session.
+    if "regions_data_loaded" not in st.session_state:
+        retrieve_regions_and_save()
+        st.session_state["regions_data_loaded"] = True
     main()
