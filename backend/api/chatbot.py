@@ -274,6 +274,8 @@ class Chatbot:
         Based on the last few messages in their chat history, update or expand this description 
         to reflect any new insights about their conversation style, preferences, or notable traits or information that would be useful for a chatbot to consider. 
         Only add new information if relevant. Otherwise keep it the same.
+        
+        Make sure to keep this very concise, only what is necessary for the use of personalizing future messages for this user.
 
         Chat History:
         {formatted_history}
