@@ -34,7 +34,7 @@ def get_base64_image(image_path):
         return None
 
 
-def request_api(message: str, user_type: str, location: str, region_id: int) -> str:
+def request_api(message: str, username: str, user_type: str, location: str, region_id: int) -> str:
     """
     Sends an API request to a chatbot.
     """
@@ -46,7 +46,7 @@ def request_api(message: str, user_type: str, location: str, region_id: int) -> 
         if location == "":
             location = geocoder.ip("me").latlng
         data = {
-            'username': DEFAULT_NAME,
+            'username': username,
             'message': message,
             'usertype': user_type,
             'location': location,
@@ -55,7 +55,6 @@ def request_api(message: str, user_type: str, location: str, region_id: int) -> 
         json_data = json.dumps(data)
         try:
             print(f"[DEBUG] Sending API request to {url} with data: {json_data}")
-
             response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
         except requests.exceptions.ConnectionError:
             return "Error, no connection"
@@ -182,9 +181,7 @@ def load_regions_data() -> list:
 
 # Callback function for automatic region selection
 def update_region():
-    # Get the selected option from session_state (set by the selectbox)
     selected_option = st.session_state.get("region_dropdown")
-    # Ignore if the default prompt is still selected.
     if selected_option == "Choose Next Bound":
         return
     selected_region = next((region for region in st.session_state["current_options"]
@@ -212,27 +209,35 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    # Persistent fields for username, user type, and location.
+    username_input = st.text_input("Enter your username:", key="username_field",
+                                   value=st.session_state.get("username_field", DEFAULT_NAME))
+    user_type_input = st.text_input("Enter your user type:", key="user_type_field",
+                                    value=st.session_state.get("user_type_field", DEFAULT_TYPE))
+    location_input = st.text_input("Enter your location:", key="location_field",
+                                   value=st.session_state.get("location_field", DEFAULT_LOCATION))
+
     # ---------------------------
     # Region Filter Widget
     # ---------------------------
-
-    # Initialize session state variables for region filtering.
     if "region_path" not in st.session_state:
         st.session_state["region_path"] = []  # List to store selected region objects.
     if "current_options" not in st.session_state:
         st.session_state["current_options"] = load_regions_data()  # Start with top-level regions.
 
-    # Display uneditable current region field.
     if st.session_state["region_path"]:
         region_path_str = " > ".join([region["region_name"] for region in st.session_state["region_path"]])
     else:
         region_path_str = "No Region Bound"
     st.text_input("Current Region", value=region_path_str, disabled=True)
 
-    # Prepare dropdown options with a default prompt.
-    options = ["Choose Next Bound"] + [region["region_name"] for region in st.session_state["current_options"]] if st.session_state["current_options"] else []
+    options = ["Choose Next Bound"] + (
+        [region["region_name"] for region in st.session_state["current_options"]]
+        if st.session_state["current_options"] else []
+    )
     if options:
-        st.selectbox("Choose Next Bound", options, key="region_dropdown", on_change=update_region, label_visibility="collapsed")
+        st.selectbox("Choose Next Bound", options, key="region_dropdown",
+                     on_change=update_region, label_visibility="collapsed")
     else:
         st.write("No further regions available.")
 
@@ -241,11 +246,11 @@ def main():
         st.session_state["current_options"] = load_regions_data()
         st.rerun()
 
-    # Determine the region_id to send (last selected region's id, or -1 if none)
     if st.session_state["region_path"]:
         region_id = st.session_state["region_path"][-1]["region_id"]
     else:
         region_id = -1
+
 
     # ---------------------------
     # Chat Interface
@@ -257,10 +262,9 @@ def main():
 
     chat_placeholder = st.empty()
 
-    with st.form(key="chat_form", clear_on_submit=True):
+    # Separate form for the message field only; clear_on_submit clears just this field.
+    with st.form(key="message_form", clear_on_submit=True):
         user_message = st.text_input("Enter your message:")
-        user_type_input = st.text_input("Enter your user type:", value=DEFAULT_TYPE)
-        location_input = st.text_input("Enter your location:", value=DEFAULT_LOCATION)
         submit_button = st.form_submit_button("Send")
 
     if submit_button and user_message:
@@ -271,7 +275,7 @@ def main():
         with chat_placeholder:
             components.html(chat_history_html, height=440)
         with st.spinner("Waiting for response..."):
-            response = request_api(user_message, user_type_input, location_input, region_id)
+            response = request_api(user_message, username_input, user_type_input, location_input, region_id)
         st.session_state["chat_history"][-1] = ("bot", response)
 
     chat_history_html = render_chat_history(st.session_state["chat_history"])
@@ -280,7 +284,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # Only retrieve regions once per session.
     if "regions_data_loaded" not in st.session_state:
         retrieve_regions_and_save()
         st.session_state["regions_data_loaded"] = True
