@@ -85,9 +85,9 @@ def generate():
         # Call the chat function
         response = chatbot_obj.chat(message, username, usertype, location, region_id)
 
-        threading.Thread(target=chatbot_obj.update_user, args=(username, message, response)).start()
+        threading.Thread(target=chatbot_obj.update_user, args=(username, message, response["response"])).start()
 
-        return jsonify({'response': response}), 200
+        return jsonify(response), 200
 
     except Exception as e:
         logger.error("/generate/: %s", e)

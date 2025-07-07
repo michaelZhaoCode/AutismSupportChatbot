@@ -34,7 +34,54 @@ def get_base64_image(image_path):
         return None
 
 
-def request_api(message: str, username: str, user_type: str, location: str, region_id: int) -> str:
+def embed_leaflet_map_html(
+    coordinates: list[tuple[float, float]],
+    width: str = "100%",
+    height: str = "400px"
+) -> str:
+    """
+    Returns an HTML string to embed a Leaflet.js map with multiple markers and auto-fit bounds.
+    """
+    if not coordinates:
+        raise ValueError("At least one coordinate must be provided.")
+
+    # JavaScript array for LatLngBounds
+    latlng_array = ",\n".join(f"[{lat}, {lon}]" for lat, lon in coordinates)
+
+    # Marker creation
+    markers_js = "\n".join(
+        f"L.marker([{lat}, {lon}]).addTo(map);" for lat, lon in coordinates
+    )
+
+    return f"""
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+    <div id="map" style="height:{height}; width:{width}; border-radius:10px;"></div>
+    <script>
+        var map = L.map('map');
+        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }}).addTo(map);
+
+        var markers = [
+            {latlng_array}
+        ];
+        var bounds = L.latLngBounds(markers);
+        map.fitBounds(bounds);
+
+        {markers_js}
+    </script>
+    """
+
+
+def request_api(message: str, username: str, user_type: str, location: str, region_id: int) -> dict:
     """
     Sends an API request to a chatbot.
     """
@@ -57,34 +104,35 @@ def request_api(message: str, username: str, user_type: str, location: str, regi
             print(f"[DEBUG] Sending API request to {url} with data: {json_data}")
             response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
         except requests.exceptions.ConnectionError:
-            return "Error, no connection"
+            return {"response": "Error, no connection"}
         if response.status_code == 200:
             response_data = response.json()
             print('Response from server:', response_data['response'])
-            return response_data['response']
+            return response_data
         else:
             print('Failed to get a valid response:', response.status_code, response.text)
-            return "Error"
+            return {"response": "Error"}
 
 
 def format_message(role: str, message: str) -> str:
     """
-    Returns an HTML-formatted string for the given message.
+    Returns an HTML-formatted string for the given message, preserving newlines
+    and allowing raw HTML (e.g., loading GIF).
     """
-    if role == "user":
-        return f"""
+    # format new lines
+    msg_html = message.replace("\n", "<br>")
+
+    bubble_style = (
+        "background-color: #0000FF; color: white; text-align: right; float: right;"
+        if role == "user" else
+        "background-color: #444444; color: white; text-align: left; float: left;"
+    )
+    label = "You:" if role == "user" else "Bot:"
+
+    return f"""
 <div style="width: 100%;">
-  <div style="background-color: #0000FF; color: white; padding: 10px; border-radius: 10px; margin: 5px 0; text-align: right; max-width: 60%; float: right;">
-    <strong>You:</strong> {message}
-  </div>
-  <div style="clear: both;"></div>
-</div>
-"""
-    else:
-        return f"""
-<div style="width: 100%;">
-  <div style="background-color: #444444; color: white; padding: 10px; border-radius: 10px; margin: 5px 0; text-align: left; max-width: 60%; float: left;">
-    <strong>Bot:</strong> {message}
+  <div style="{bubble_style} padding: 10px; border-radius: 10px; margin: 5px 0; max-width: 80%;">
+    <strong>{label}</strong> {msg_html}
   </div>
   <div style="clear: both;"></div>
 </div>
@@ -259,8 +307,18 @@ def main():
 
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
+    if "created_map" not in st.session_state:
+        st.session_state["created_map"] = False
+    if "coords" not in st.session_state:
+        st.session_state["coords"] = []
 
     chat_placeholder = st.empty()
+
+    if st.session_state["created_map"]:
+        # Render map separately
+        map_html = embed_leaflet_map_html(st.session_state["coords"])
+        components.html(map_html, height=450)
+
 
     # Separate form for the message field only; clear_on_submit clears just this field.
     with st.form(key="message_form", clear_on_submit=True):
@@ -276,7 +334,12 @@ def main():
             components.html(chat_history_html, height=440)
         with st.spinner("Waiting for response..."):
             response = request_api(user_message, username_input, user_type_input, location_input, region_id)
-        st.session_state["chat_history"][-1] = ("bot", response)
+            message = response["response"]
+            if response["response_type"] == "service":
+                st.session_state["coords"] = [(service["Latitude"], service["Longitude"]) for service in response["context"]["services"]]
+                st.session_state["created_map"] = True
+        st.session_state["chat_history"][-1] = ("bot", message)
+        st.rerun()
 
     chat_history_html = render_chat_history(st.session_state["chat_history"])
     with chat_placeholder:
@@ -288,3 +351,4 @@ if __name__ == "__main__":
         retrieve_regions_and_save()
         st.session_state["regions_data_loaded"] = True
     main()
+

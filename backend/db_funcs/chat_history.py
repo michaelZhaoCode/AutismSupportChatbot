@@ -163,4 +163,4 @@ if __name__ == "__main__":
     setup_logger("db_funcs.log")
     db = setup_mongo_db()
     chat_history_interface = ChatHistoryInterface(db)
-    print(chat_history_interface.retrieve_personality("User"))
+    print(chat_history_interface.clear_chat_history("User"))
