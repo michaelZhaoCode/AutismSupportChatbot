@@ -11,7 +11,7 @@ from api.botservice.gpt_botservice import GPTBotService
 from api.servicehandler.botservice_servicehandler import BotserviceServiceHandler
 from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
 from db_funcs.file_storage import PDFStorageInterface
-from db_funcs.chat_history import ChatHistoryInterface
+from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import setup_mongo_db
 from logger import setup_logger
@@ -33,7 +33,7 @@ location_database.initialize_database()
 location_database.create_snapshot()
 
 mongo_db = setup_mongo_db()
-chat_history = ChatHistoryInterface(mongo_db)
+chat_history = MongoDBChatHistoryProvider(mongo_db)
 pdf_storage = PDFStorageInterface(mongo_db)
 cluster_storage = ClusterStorageInterface(mongo_db)
 service_handler = BotserviceServiceHandler(botservice, location_database)

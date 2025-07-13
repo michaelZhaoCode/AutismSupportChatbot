@@ -11,6 +11,8 @@ The `GPTBotService` class contains the following methods:
 import logging
 
 from api.botservice import BotService
+from models.chathistorymodel import ChatHistory, MessageRole
+
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -48,7 +50,7 @@ class GPTBotService(BotService):
             self,
             message: str,
             model: str,
-            chat_history: list[dict[str, str]],
+            chat_history: ChatHistory | None = None,
             documents: list[dict[str, str]] | None = None
     ) -> str:
         """
@@ -72,7 +74,13 @@ class GPTBotService(BotService):
         logger.debug("chat: Added related contextual documents for the GPT model")
 
         latest_message = {"role": "user", "content": context_str}
-        chat_history.append(latest_message)
+        if not chat_history:
+            chat_history = [latest_message]
+        else:
+            chat_history = chat_history.to_dict()
+            chat_history = self._convert_role_keys(chat_history)
+
+            chat_history.append(latest_message)
         logger.debug("chat: Added latest message to chat history")
         response = self.openai_client.chat.completions.create(
             model=model,
@@ -81,6 +89,18 @@ class GPTBotService(BotService):
         logger.info("chat: Obtained response from GPT model")
 
         return response.choices[0].message.content
+
+    @staticmethod
+    def _convert_role_keys(chat_history: list[dict[str, str]]) -> list[dict[str, str]]:
+        """
+        Converts the role values in the chat history to OpenAI's format.
+        """
+        for message in chat_history:
+            if message["role"] == MessageRole.USER.value:
+                message["role"] = "user"
+            elif message["role"] == MessageRole.ASSISTANT.value:
+                message["role"] = "assistant"
+        return chat_history
 
     def choose(self, options: list[str], query: str, model: str, choices: int = 1, n: int = 1) -> list[str] | list[
         list[str]]:

@@ -9,13 +9,14 @@ import logging
 import os
 from collections import Counter
 
-from constants import MAIN_MODEL_USE, MAJORITY_VOTING_N, BLURB_HISTORY, BLURB_MODEL_USE
+from constants import MAIN_MODEL_USE, MAJORITY_VOTING_N, BLURB_HISTORY_CONTEXT, BLURB_MODEL_USE
 from api.botservice import BotService
 from api.servicehandler import ServiceHandler
 from algos.cluster import compute_cluster, give_closest_cluster
 from db_funcs.file_storage import PDFStorageInterface
-from db_funcs.chat_history import ChatHistoryInterface
+from db_funcs.chat_history_data_provider import ChatHistoryDataProvider
 from db_funcs.cluster_storage import ClusterStorageInterface
+from models.chathistorymodel import ChatMessage, Personality, MessageRole
 from utils import extract_text, chunk_pdf_in_memory
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class Chatbot:
     def __init__(
             self,
             pdf_storage: PDFStorageInterface,
-            chat_history: ChatHistoryInterface,
+            chat_history: ChatHistoryDataProvider,
             cluster_storage: ClusterStorageInterface,
             botservice: BotService,
             service_handler: ServiceHandler
@@ -46,7 +47,7 @@ class Chatbot:
 
         Args:
             pdf_storage (PDFStorageInterface): Interface for PDF storage operations.
-            chat_history (ChatHistoryInterface): Interface for chat history operations.
+            chat_history (ChatHistoryDataProvider): Interface for chat history operations.
             cluster_storage (ClusterStorageInterface): Interface for cluster storage operations.
             botservice (BotService): BotService instance for generating embeddings and chat responses.
         """
@@ -164,7 +165,9 @@ class Chatbot:
         }
 
         if response_type != "service":
-            params["chat_history"] = self.chat_history.retrieve_chat_history(username)
+            # Convert ChatHistory to the format expected by the chat service
+            chat_history = self.chat_history.retrieve_chat_history(username)
+            params["chat_history"] = chat_history
         else:
             documents = []
             for service in context.get("services", []):
@@ -183,7 +186,7 @@ class Chatbot:
                     "contents": "\n".join(contents)
                 })
             params["documents"] = documents
-            params["chat_history"] = []
+            params["chat_history"] = []  # No history for service responses
 
         if response_type == "rag":
             closest_files = give_closest_cluster(prompt, self.botservice, self.cluster_storage)
@@ -286,15 +289,15 @@ class Chatbot:
         """
         logger.info("chat: Inserting chat history to the database")
 
-        self.chat_history.insert_chat_history(username, [[prompt, response]])
+        user_message = ChatMessage(MessageRole.USER, content=prompt)
+        bot_message = ChatMessage(MessageRole.ASSISTANT, content=response)
+        self.chat_history.append_chat_history(username, [user_message, bot_message])
         current_blurb = self.chat_history.retrieve_personality(username)
         history = self.chat_history.retrieve_chat_history(username)
-        recent = history[-BLURB_HISTORY:] if len(history) > BLURB_HISTORY else history
+        recent = history[-BLURB_HISTORY_CONTEXT:] if len(history) > BLURB_HISTORY_CONTEXT else history
 
         # Format chat history into a readable string
-        formatted_history = "\n".join(
-            f"{entry['role'].capitalize()}: {entry['content']}" for entry in recent
-        )
+        formatted_history = str(recent)
 
         # Construct a prompt to refine the personality blurb
         update_prompt = f"""
@@ -313,8 +316,8 @@ class Chatbot:
         Provide the updated personality description:
         """
 
-        new_blurb = self.botservice.chat(update_prompt, BLURB_MODEL_USE, [])
-        self.chat_history.update_personality(username, new_blurb)
+        new_blurb = self.botservice.chat(update_prompt, BLURB_MODEL_USE)
+        self.chat_history.update_personality(username, Personality(new_blurb))
 
     def clear_history(self, username: str) -> None:
         """Clear the chat history for a given username."""

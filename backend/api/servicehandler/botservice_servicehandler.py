@@ -8,7 +8,7 @@ import logging
 from math import radians, sin, cos, sqrt, atan2
 
 from constants import SERVICE_MODEL_USE
-from constants import MAX_SERVICES
+from constants import MAX_SERVICES_RECOMMENDED
 from api.botservice import BotService
 from api.locationdatabase import LocationDatabase
 from api.servicehandler import ServiceHandler
@@ -81,13 +81,13 @@ class BotserviceServiceHandler(ServiceHandler):
         logger.info("Coordinates for location '%s': %s", location, coords)
 
         services = self._find_services(
-            chosen_service, MAX_SERVICES, region_id, coords
+            chosen_service, MAX_SERVICES_RECOMMENDED, region_id, coords
         )
         logger.info("Found %d services", len(services))
 
         return {
             "chosen_service": chosen_service,
-            "max_services": MAX_SERVICES,
+            "max_services": MAX_SERVICES_RECOMMENDED,
             "latitude": coords[0] if coords else None,
             "longitude": coords[1] if coords else None,
             "services": services
