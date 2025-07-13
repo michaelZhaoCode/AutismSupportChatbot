@@ -1,7 +1,8 @@
 import os
 import logging
+import threading
 from openai import OpenAI
-from flask import Flask, request, jsonify, after_this_request
+from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
@@ -10,7 +11,7 @@ from api.botservice.gpt_botservice import GPTBotService
 from api.servicehandler.botservice_servicehandler import BotserviceServiceHandler
 from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
 from db_funcs.file_storage import PDFStorageInterface
-from db_funcs.chat_history import ChatHistoryInterface
+from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import setup_mongo_db
 from logger import setup_logger
@@ -32,7 +33,7 @@ location_database.initialize_database()
 location_database.create_snapshot()
 
 mongo_db = setup_mongo_db()
-chat_history = ChatHistoryInterface(mongo_db)
+chat_history = MongoDBChatHistoryProvider(mongo_db)
 pdf_storage = PDFStorageInterface(mongo_db)
 cluster_storage = ClusterStorageInterface(mongo_db)
 service_handler = BotserviceServiceHandler(botservice, location_database)
@@ -84,11 +85,9 @@ def generate():
         # Call the chat function
         response = chatbot_obj.chat(message, username, usertype, location, region_id)
 
-        @after_this_request
-        def update_user(_):
-            chatbot_obj.update_user(username, message, response)
+        threading.Thread(target=chatbot_obj.update_user, args=(username, message, response["response"])).start()
 
-        return jsonify({'response': response}), 200
+        return jsonify(response), 200
 
     except Exception as e:
         logger.error("/generate/: %s", e)

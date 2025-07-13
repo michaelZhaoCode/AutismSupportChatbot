@@ -1,4 +1,5 @@
 from api.locationdatabase import LocationDatabase
+from models.servicedata import ServiceData
 from constants import REGION_TYPE_PRIORITY
 from pathlib import Path
 import sqlite3
@@ -126,7 +127,7 @@ class SQLiteLocationDatabase(LocationDatabase):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def find_services_in(self, region_id: int, service_type: str) -> list[dict]:
+    def find_services_in(self, region_id: int, service_type: str) -> list[ServiceData]:
         """Finds services of a specified type available within a region and its subregions in the SQLite database."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -153,7 +154,7 @@ class SQLiteLocationDatabase(LocationDatabase):
 
                 # Fetch all services and convert each row to a dictionary
                 columns = [column[0] for column in cursor.description]
-                services = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                services = [ServiceData.from_dict(dict(zip(columns, row))) for row in cursor.fetchall()]
                 return services
 
         except sqlite3.Error as e:
@@ -321,7 +322,7 @@ class SQLiteLocationDatabase(LocationDatabase):
 
         return {}
 
-    def find_all_services(self, service_type: str = None) -> list[dict]:
+    def find_all_services(self, service_type: str = None) -> list[ServiceData]:
         """
         Retrieves all services stored in the database, optionally filtered by ServiceType.
         Includes all details from each row in the Services table.
@@ -356,7 +357,7 @@ class SQLiteLocationDatabase(LocationDatabase):
                 # Fetch column names and results, then format them as a list of dictionaries
                 columns = [column[0] for column in cursor.description]
                 rows = cursor.fetchall()
-                services = [dict(zip(columns, row)) for row in rows]
+                services = [ServiceData.from_dict(dict(zip(columns, row))) for row in rows]
 
         except sqlite3.Error as e:
             print(f"Database error: {e}")

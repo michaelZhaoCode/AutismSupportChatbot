@@ -3,15 +3,18 @@ This file has a handler class for managing bot services. This class interacts wi
 to chat with the bot and choose services from a list of available services.
 """
 
-import os
 import random
+import logging
 from math import radians, sin, cos, sqrt, atan2
 
 from constants import SERVICE_MODEL_USE
-from constants import MAX_SERVICES
+from constants import MAX_SERVICES_RECOMMENDED
 from api.botservice import BotService
 from api.locationdatabase import LocationDatabase
 from api.servicehandler import ServiceHandler
+
+
+logger = logging.getLogger(__name__)
 
 
 class BotserviceServiceHandler(ServiceHandler):
@@ -42,34 +45,6 @@ class BotserviceServiceHandler(ServiceHandler):
 
         self.service_list = self.location_database.get_all_service_types()
 
-    @staticmethod
-    def _load_prompt() -> str:
-        """
-        Loads a prompt from a text file located in the 'prompts/service' directory
-        relative to the current file. If the file does not exist, a FileNotFoundError
-        is raised.
-
-        Returns:
-            str: The content of the prompt file.
-
-        Raises:
-            FileNotFoundError: If the prompt file does not exist at the specified path.
-        """
-        # TODO: add logging
-
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_dir, "..", 'prompts', "service", f"prompt.txt")
-
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"The prompt file does not exist at '{file_path}'.")
-
-        with open(file_path, 'r', encoding='utf-8') as file:
-            prompt = file.read()
-
-        print(f"Found prompt with response type: service")
-
-        return prompt
-
     def choose_service(self, user_message: str) -> str:
         """
         Chooses a service from the available services based on the user's message.
@@ -84,97 +59,106 @@ class BotserviceServiceHandler(ServiceHandler):
 
         query = f"Based on this user message, what type of service do they require? User message: {user_message}"
         choice = self.botservice.choose(self.service_list, query, model=SERVICE_MODEL_USE)[0]
-        print(f"Chosen service: {choice}")
+        logger.info("Chosen service: %s", choice)
+
         return choice
 
-    def get_response(self, user_message: str, location: str, region_id: int = -1) -> str:
+    def get_response(self, user_message: str, location: str, region_id: int = -1) -> dict:
         """
-        Generates a response by selecting and processing service data based on the user's message and location.
-
-        The function first interprets the user's message to determine an appropriate service category. It then uses
-        the location, if provided, to refine the search within `self.location_database`. If no location is specified,
-        random service data may be selected. Latitude and longitude are estimated for the location via a prompt,
-        and the bot compiles a list of relevant service providers in the specified region.
-
-        Parameters:
-            user_message (str): The user's input message, which guides the service selection.
-            location (str): The user's location, used to filter services by geographic proximity.
-            region_id (int): A specified regional id for further narrowing down services by region.
-
-        Returns:
-            str: The bot's generated response after processing the user's message and the selected service data.
+        Generate a structured response dict containing:
+          - chosen_service (str): The service type selected.
+          - max_services (int): The maximum number of services returned.
+          - latitude (float or None): Geocoded latitude of the provided location.
+          - longitude (float or None): Geocoded longitude of the provided location.
+          - services (list of ServiceData)
         """
         # TODO: add logging
 
         chosen_service = self.choose_service(user_message)
 
-        if location:
-            location_prompt = f"Provide the estimated latitude and longitude values of this location, " \
-                              f"for your output format, only provide the two values separated by a " \
-                              f"single comma with nothing else.\nLocation: {location}"
+        coords = self._get_coordinates(location) if location else None
 
-            try:
-                latitude, longitude = self.botservice.chat(location_prompt, model=SERVICE_MODEL_USE,
-                                                           chat_history=[]).split(",")
-                latitude = float(latitude.strip())
-                longitude = float(longitude.strip())
-            except ValueError:
-                latitude, longitude = None, None
-        else:
-            latitude, longitude = None, None
+        logger.info("Coordinates for location '%s': %s", location, coords)
 
-        document = {"title": f"Known providers of {chosen_service}",
-                    'contents': self._find_services(chosen_service, MAX_SERVICES, region_id, latitude, longitude)}
+        services = self._find_services(
+            chosen_service, MAX_SERVICES_RECOMMENDED, region_id, coords
+        )
+        logger.info("Found %d services", len(services))
 
-        prompt = self._load_prompt().format(user_message)
-        response = self.botservice.chat(prompt, model=SERVICE_MODEL_USE, documents=[document], chat_history=[])
-        # Remove Markdown bold
-        return response.replace("**", "")
+        return {
+            "chosen_service": chosen_service,
+            "max_services": MAX_SERVICES_RECOMMENDED,
+            "latitude": coords[0] if coords else None,
+            "longitude": coords[1] if coords else None,
+            "services": services
+        }
 
-    def _find_services(self, service_type: str, n: int, region_id: int = -1, latitude: float = None,
-                       longitude: float = None) -> str:
-
-        # Step 1: Check if region_path is provided
+    def _find_services(
+            self,
+            service_type: str,
+            n: int,
+            region_id: int = -1,
+            lat_long: tuple[float, float] | None = None
+    ) -> list[dict]:
+        # if a valid region_id is provided, use its coordinates as fallback
         if region_id > -1:
             region = self.location_database.find_region_by_id(region_id)
             if not region:
-                return "Region not found."
-
-            # Use region's latitude and longitude if not provided
-            if latitude is None and longitude is None:
-                latitude = region['Latitude']
-                longitude = region['Longitude']
+                return []
+            if not lat_long:
+                latitude = region["Latitude"]
+                longitude = region["Longitude"]
         else:
-            region_id = None  # No region bound
+            region_id = None
 
-        # Step 2: Fetch services based on region
-        if region_id:
-            services = self.location_database.find_services_in(region_id, service_type)
+        # fetch raw services
+        if region_id is not None:
+            candidates = self.location_database.find_services_in(region_id, service_type)
         else:
-            services = self.location_database.find_all_services(service_type)
+            candidates = self.location_database.find_all_services(service_type)
 
-        # Step 3: Filter and sort services by distance if lat/long is given
-        if latitude is not None and longitude is not None:
-            services = sorted(
-                services,
-                key=lambda s: self._haversine_distance(latitude, longitude, s['Latitude'], s['Longitude'])
-            )
-        elif region_id == -1 and latitude is None and longitude is None:
-            # Step 4: Select random services if no location data is provided
-            services = random.sample(services, min(n, len(services)))
+        top = []
+        # if we have coordinates, sort by distance
+        if lat_long:
+            latitude, longitude = lat_long
+            top = sorted(candidates,
+                         key=lambda s: self._haversine_distance(
+                             latitude, longitude, s.latitude, s.longitude
+                         )
+                         )[:n]
+        # otherwise, pick random sample if no location or region
+        elif region_id is None:
+            top = random.sample(candidates, min(n, len(candidates)))
 
-        # Step 5: Select the top n closest services
-        closest_services = services[:n]
+        # optionally, compute and attach distance
+        if lat_long:
+            for service in top:
+                lat, lon = lat_long
+                service_lat = service.latitude
+                service_lon = service.longitude
+                service.distance_km = self._haversine_distance(lat, lon, service_lat, service_lon)
 
-        # Step 6: Concatenate service information for the return string
-        result = "\n\n".join(
-            f"Service Name: {service['ServiceName']}\n"
-            f"Address: {service.get('Address', 'N/A')}\n"
-            f"Phone: {service.get('Phone', 'N/A')}\n"
-            f"Website: {service.get('Website', 'N/A')}"
-            for service in closest_services
+        return top
+
+    def _get_coordinates(self, location: str) -> tuple[float, float] | None:
+        """
+        Geocode a free-form location string into (latitude, longitude).
+
+        :param location: The location to geocode.
+        :return: Tuple of floats or None on failure.
+        """
+        prompt = (
+            "Provide the estimated latitude and longitude values of this location;"
+            " output only two values separated by a comma.\n"
+            f"Location: {location}"
         )
-        return result
+        try:
+            lat_str, lon_str = self.botservice.chat(
+                prompt, model=SERVICE_MODEL_USE, chat_history=[]
+            ).split(",")
+            return float(lat_str), float(lon_str)
+        except ValueError:
+            return None
 
     # Haversine distance helper function
     @staticmethod

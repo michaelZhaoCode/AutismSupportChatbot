@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from models.servicedata import ServiceData
 
 
 class LocationDatabase(ABC):
@@ -53,7 +54,7 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def find_services_in(self, region_id: int, service_type: str) -> list[dict]:
+    def find_services_in(self, region_id: int, service_type: str) -> list[ServiceData]:
         """
         Retrieves a list of services available within a specified region and its subregions, optionally filtered by service type.
 
@@ -109,7 +110,7 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def find_all_services(self, service_type: str = None) -> list[dict]:
+    def find_all_services(self, service_type: str = None) -> list[ServiceData]:
         """
         Retrieves all services stored in the database, optionally filtered by service type.
 

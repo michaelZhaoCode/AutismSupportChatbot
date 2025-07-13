@@ -16,3 +16,4 @@ requests~=2.32.3
 pyttsx3~=2.90
 pillow~=10.4.0
 geocoder
+streamlit

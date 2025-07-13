@@ -4,6 +4,8 @@ This module defines an abstract base class `BotService` for implementing various
 
 from abc import ABC, abstractmethod
 
+from models.chathistorymodel import ChatHistory
+
 
 class BotService(ABC):
     """
@@ -38,7 +40,7 @@ class BotService(ABC):
             self,
             message: str,
             model: str,
-            chat_history: list[dict[str, str]],
+            chat_history: ChatHistory | None = None,
             documents: list[dict[str, str]] | None = None
     ) -> str:
         """
