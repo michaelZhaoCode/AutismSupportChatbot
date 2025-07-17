@@ -16,6 +16,7 @@ from algos.cluster import compute_cluster, give_closest_cluster
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.chat_history_data_provider import ChatHistoryDataProvider
 from db_funcs.cluster_storage import ClusterStorageInterface
+from db_funcs.feedback_data_provider import FeedbackDataProvider
 from models.chathistorymodel import ChatMessage, Personality, MessageRole
 from utils import extract_text, chunk_pdf_in_memory
 
@@ -39,6 +40,7 @@ class Chatbot:
             pdf_storage: PDFStorageInterface,
             chat_history: ChatHistoryDataProvider,
             cluster_storage: ClusterStorageInterface,
+            feedback_storage: FeedbackDataProvider,
             botservice: BotService,
             service_handler: ServiceHandler
     ):
@@ -49,11 +51,13 @@ class Chatbot:
             pdf_storage (PDFStorageInterface): Interface for PDF storage operations.
             chat_history (ChatHistoryDataProvider): Interface for chat history operations.
             cluster_storage (ClusterStorageInterface): Interface for cluster storage operations.
+            feedback_storage (FeedbackDataProvider): Interface for feedback storage operations.
             botservice (BotService): BotService instance for generating embeddings and chat responses.
         """
         self.pdf_storage = pdf_storage
         self.chat_history = chat_history
         self.cluster_storage = cluster_storage
+        self.feedback_storage = feedback_storage
         self.botservice = botservice
         self.service_handler = service_handler
 
@@ -322,3 +326,15 @@ class Chatbot:
     def clear_history(self, username: str) -> None:
         """Clear the chat history for a given username."""
         self.chat_history.clear_chat_history(username)
+
+    def add_feedback(self, username: str, feedback: str) -> None:
+        """Add feedback for a user."""
+        self.feedback_storage.add_feedback(username, feedback)
+
+    def retrieve_all_feedback(self) -> list[dict[str, str]]:
+        """Retrieve all stored feedback entries."""
+        return self.feedback_storage.retrieve_all_feedback()
+
+    def clear_feedback_storage(self) -> None:
+        """Clear the feedback storage."""
+        self.feedback_storage.clear_database()
