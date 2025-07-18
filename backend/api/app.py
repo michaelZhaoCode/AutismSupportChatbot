@@ -10,9 +10,9 @@ from api.chatbot import Chatbot
 from api.botservice.gpt_botservice import GPTBotService
 from api.servicehandler.botservice_servicehandler import BotserviceServiceHandler
 from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
-from db_funcs.file_storage import PDFStorageInterface
-from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
-from db_funcs.cluster_storage import ClusterStorageInterface
+
+from db_funcs.unified_pinecone_storage import UnifiedPineconeStorage
+from db_funcs.chat_history import ChatHistoryInterface
 from utils import setup_mongo_db
 from logger import setup_logger
 
@@ -32,13 +32,18 @@ location_database = SQLiteLocationDatabase()
 location_database.initialize_database()
 location_database.create_snapshot()
 
+# MongoDB is still used for chat history
 mongo_db = setup_mongo_db()
-chat_history = MongoDBChatHistoryProvider(mongo_db)
-pdf_storage = PDFStorageInterface(mongo_db)
-cluster_storage = ClusterStorageInterface(mongo_db)
+
+chat_history = ChatHistoryInterface(mongo_db)
+
+# Initialize unified Pinecone storage for PDFs and embeddings
+storage = UnifiedPineconeStorage()
+logger.info("Connected to Pinecone storage")
+
 service_handler = BotserviceServiceHandler(botservice, location_database)
 
-chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice, service_handler)
+chatbot_obj = Chatbot(storage, chat_history, botservice, service_handler)
 logger.info("Initialised all global app instances")
 
 app = Flask(__name__)
@@ -104,6 +109,18 @@ def retrieve_regions():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while retrieving regions'}), 500
+
+
+@app.route('/storage_stats', methods=['GET'])
+@cross_origin()
+def storage_stats():
+    """Get statistics about the PDF storage."""
+    try:
+        stats = chatbot_obj.get_storage_stats()
+        return jsonify({'response': stats}), 200
+    except Exception as e:
+        logger.error("/storage_stats/: %s", e)
+        return jsonify({'error': 'An error occurred while retrieving storage stats'}), 500
 
 
 if __name__ == "__main__":
