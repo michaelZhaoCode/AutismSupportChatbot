@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 from io import BytesIO
 import logging
 
+from db_funcs.unified_pinecone_storage import setup_pinecone
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +33,6 @@ def setup_mongo_db() -> Database:
     load_dotenv()
 
     uri = f"mongodb+srv://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}{os.environ['DB_LINK']}"
-
     # Create a new client and connect to the server
     client = MongoClient(uri)
 
@@ -57,6 +59,15 @@ def empty_database() -> None:
         logger.info("empty_database: Dropped collection %s", collection_name)
 
     logger.info("empty_database: Emptied the database")
+
+
+def empty_pinecone_index() -> None:
+    """
+    Delete all vectors in the Pinecone index.
+    """
+    index = setup_pinecone()
+    index.delete(delete_all=True)
+    logger.info("empty_pinecone_index: Deleted all vectors from Pinecone index")
 
 
 def chunk_pdf_in_memory(pdf_path: str) -> list[tuple[str, bytes]]:
