@@ -109,8 +109,8 @@ if __name__ == "__main__":
     
  
     # Run examples
-    example_store_and_retrieve()
-    example_chunk_operations()
+    # example_store_and_retrieve()
+    # example_chunk_operations()
     example_statistics()
         
         

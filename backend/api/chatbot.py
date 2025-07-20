@@ -16,8 +16,8 @@ from api.servicehandler import ServiceHandler
 
 
 from db_funcs.unified_pinecone_storage import UnifiedPineconeStorage
-from db_funcs.chat_history import ChatHistoryInterface
-
+from models.chathistorymodel import ChatMessage, Personality, MessageRole
+from db_funcs.chat_history_data_provider import ChatHistoryDataProvider
 from utils import extract_text, chunk_pdf_in_memory
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class Chatbot:
     def __init__(
             self,
             storage: UnifiedPineconeStorage,
-            chat_history: ChatHistoryInterface,
+            chat_history: ChatHistoryDataProvider,
             botservice: BotService,
             service_handler: ServiceHandler
     ):
@@ -256,11 +256,18 @@ class Chatbot:
             params["chat_history"] = []  # No history for service responses
 
         if response_type == "rag":
-            closest_files = give_closest_cluster(user_message, self.botservice, self.cluster_storage)
-            files_content = self.pdf_storage.retrieve_pdfs(closest_files)
-            texts = [extract_text(data) for data in files_content]
-            documents = [{'title': closest_files[i], 'contents': texts[i]} for i in range(len(closest_files))]
-            params["documents"] = documents
+
+            # Get relevant chunks using similarity search
+            relevant_chunks = self._get_relevant_chunks(prompt, top_k=5)
+            if relevant_chunks:
+                # Format chunks as documents for the model
+                documents = [
+                    {'title': chunk_id, 'contents': chunk_text}
+                    for chunk_id, chunk_text in relevant_chunks
+                ]
+                params["documents"] = documents
+                logger.info(f"_generate: Using {len(documents)} relevant documents for RAG")
+
 
         logger.info("_generate: Getting %s response", response_type)
         response = self.botservice.chat(**params)
@@ -307,9 +314,9 @@ class Chatbot:
             pdf_path (str): The path to the PDF file.
         """
         # Chunk the PDF
-        chunks = chunk_pdf_in_memory(pdf_path)
+        chunks = chunk_pdf_in_memory(pdf_path)[:5]
         logger.info(f"add_pdf: Processing {len(chunks)} chunks from {pdf_path}")
-        
+        print(len(chunks))
         # Prepare chunks data with embeddings
         chunks_data = []
         for chunk_name, chunk_content in chunks:
@@ -448,8 +455,7 @@ class Chatbot:
         logger.info(f"test_pipeline: Testing with PDF {pdf_path} and query '{test_query}'")
         
         # # Add the PDF to the system
-        # self.add_pdf(pdf_path)
-        
+        self.add_pdf(pdf_path)
         # Get storage stats after adding the PDF
         stats = self.get_storage_stats()
         logger.info(f"test_pipeline: Storage stats after adding PDF: {stats}")
@@ -472,7 +478,7 @@ if __name__ == "__main__":
     from api.servicehandler.botservice_servicehandler import BotserviceServiceHandler
     from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
     from db_funcs.unified_pinecone_storage import UnifiedPineconeStorage
-    from db_funcs.chat_history import ChatHistoryInterface
+    from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
     from utils import setup_mongo_db
     from logger import setup_logger
 
@@ -494,7 +500,7 @@ if __name__ == "__main__":
 
     # MongoDB is still used for chat history
     mongo_db = setup_mongo_db()
-    chat_history = ChatHistoryInterface(mongo_db)
+    chat_history = MongoDBChatHistoryProvider(mongo_db)
 
     # Initialize unified Pinecone storage for PDFs and embeddings
     storage = UnifiedPineconeStorage()

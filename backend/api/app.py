@@ -13,7 +13,8 @@ from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
 
 
 from db_funcs.unified_pinecone_storage import UnifiedPineconeStorage
-from db_funcs.chat_history import ChatHistoryInterface
+
+from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
 
 from utils import setup_mongo_db
 from logger import setup_logger
@@ -38,7 +39,8 @@ location_database.create_snapshot()
 mongo_db = setup_mongo_db()
 
 
-chat_history = ChatHistoryInterface(mongo_db)
+chat_history = chat_history = MongoDBChatHistoryProvider(mongo_db)
+
 
 # Initialize unified Pinecone storage for PDFs and embeddings
 storage = UnifiedPineconeStorage()
