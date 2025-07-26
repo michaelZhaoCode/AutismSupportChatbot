@@ -39,7 +39,6 @@ chat_history = chat_history = MongoDBChatHistoryProvider(mongo_db)
 
 # Initialize unified Pinecone storage for PDFs and embeddings
 storage = UnifiedPineconeStorage()
-logger.info("Connected to Pinecone storage")
 
 service_handler = BotserviceServiceHandler(botservice, location_database)
 
