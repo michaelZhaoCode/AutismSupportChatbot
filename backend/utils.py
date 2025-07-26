@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from io import BytesIO
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +31,6 @@ def setup_mongo_db() -> Database:
     load_dotenv()
 
     uri = f"mongodb+srv://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}{os.environ['DB_LINK']}"
-
     # Create a new client and connect to the server
     client = MongoClient(uri)
 
