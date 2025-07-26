@@ -7,13 +7,12 @@ Simple unified storage system for chunks and their embeddings in Pinecone.
 import logging
 import os
 from pinecone import Pinecone, ServerlessSpec
-from typing import List, Tuple, Dict, Any, Optional
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
 
-def setup_pinecone() -> Any:
+def setup_pinecone():
     """
     Sets up the Pinecone connection and returns the index instance.
     
@@ -51,7 +50,7 @@ class UnifiedPineconeStorage:
     Simple storage for chunks and their embeddings in Pinecone.
     """
     
-    def __init__(self, index: Optional[Any] = None):
+    def __init__(self, index = None):
         """
         Initialize the storage.
         
@@ -61,7 +60,7 @@ class UnifiedPineconeStorage:
         self.index = index or setup_pinecone()
         logger.info("UnifiedPineconeStorage initialized")
     
-    def store_pdf_chunks(self, chunks_data: List[Tuple[str, str, List[float]]]) -> None:
+    def store_pdf_chunks(self, chunks_data: list[tuple[str, str, list[float]]]) -> None:
         """
         Store chunks with their embeddings in Pinecone.
         
@@ -95,9 +94,9 @@ class UnifiedPineconeStorage:
         logger.info(f"Stored {len(chunks_data)} chunks with embeddings")
     
     def retrieve_similar_chunks(self, 
-                              query_embedding: List[float], 
+                              query_embedding: list[float], 
                               top_k: int = 10,
-                              filter_dict: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                              filter_dict: dict = None) -> list[dict]:
         """
         Retrieve similar chunks using Pinecone's ANN algorithm.
         
@@ -129,7 +128,7 @@ class UnifiedPineconeStorage:
         logger.info(f"Retrieved {len(results)} similar chunks")
         return results
     
-    def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
+    def get_chunk_by_id(self, chunk_id: str) -> dict:
         """
         Retrieve a specific chunk by ID.
         
@@ -150,7 +149,7 @@ class UnifiedPineconeStorage:
             }
         return None
     
-    def delete_chunks(self, chunk_ids: List[str]) -> None:
+    def delete_chunks(self, chunk_ids: list[str]) -> None:
         """
         Delete specific chunks by their IDs.
         
@@ -163,12 +162,39 @@ class UnifiedPineconeStorage:
         self.index.delete(ids=chunk_ids)
         logger.info(f"Deleted {len(chunk_ids)} chunks")
     
+    def get_relevant_chunks(self, prompt_embedding: list[float], top_k: int = 5) -> list[tuple[str, str]]:
+        """
+        Get the most relevant PDF chunks for the given prompt using similarity search.
+
+        Args:
+            prompt_embedding (list[float]): The user's prompt embedding to find relevant chunks for.
+            top_k (int): Number of most relevant chunks to retrieve.
+
+        Returns:
+            List[Tuple[str, str]]: List of tuples (chunk_id, chunk_text) for the most relevant chunks.
+        """
+        
+        # Retrieve similar chunks using Pinecone's ANN algorithm
+        similar_chunks = self.retrieve_similar_chunks(
+            query_embedding=prompt_embedding,
+            top_k=top_k
+        )
+        
+        # Extract chunk IDs and texts
+        relevant_chunks = [
+            (chunk['chunk_id'], chunk['text'])
+            for chunk in similar_chunks
+        ]
+        
+        logger.info(f"_get_relevant_chunks: Retrieved {len(relevant_chunks)} relevant chunks")
+        return relevant_chunks
+    
     def delete_all_chunks(self) -> None:
         """Delete all chunks from the index."""
         self.index.delete(delete_all=True)
         logger.info("Deleted all chunks from Pinecone index")
     
-    def update_chunk(self, chunk_id: str, new_text: str, new_embedding: List[float]) -> None:
+    def update_chunk(self, chunk_id: str, new_text: str, new_embedding: list[float]) -> None:
         """
         Update a specific chunk's text and embedding.
         
@@ -180,7 +206,7 @@ class UnifiedPineconeStorage:
         self.store_pdf_chunks([(chunk_id, new_text, new_embedding)])
         logger.info(f"Updated chunk: {chunk_id}")
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict:
         """
         Get statistics about the storage.
         
