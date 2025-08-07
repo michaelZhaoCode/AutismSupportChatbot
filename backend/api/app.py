@@ -37,7 +37,7 @@ mongo_db = setup_mongo_db()
 chat_history = MongoDBChatHistoryProvider(mongo_db)
 pdf_storage = PDFStorageInterface(mongo_db)
 cluster_storage = ClusterStorageInterface(mongo_db)
-feedback_storage = SQLiteFeedbackDataProvider("feedback.db")
+feedback_storage = SQLiteFeedbackDataProvider("shared.db")
 service_handler = BotserviceServiceHandler(botservice, location_database)
 
 chatbot_obj = Chatbot(
