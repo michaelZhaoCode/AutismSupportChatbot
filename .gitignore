@@ -4,6 +4,7 @@ venv/
 pdfs
 pdfs/
 \pdfs
+.pylintrc
 
 # Ignore Mac system files
 .DS_Store
@@ -64,10 +65,12 @@ coverage.xml
 nosetests.xml
 coverage.xml
 *.log
+pytest-cache*/
 
 # Ignore logs and databases
 *.log
 *.sqlite
+*.db
 
 # Ignore other temporary files
 *.swp

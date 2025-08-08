@@ -98,7 +98,7 @@ class Chatbot:
                     response_type)
         return prompt
 
-    def _classify(self, prompt):
+    def classify(self, prompt):
         """
         Classify the type of response needed based on the content of the prompt.
 
@@ -215,7 +215,7 @@ class Chatbot:
         """
         # TODO: have vector similarity comparison with database of commonly asked questions
 
-        choice = self._classify(prompt)
+        choice = self.classify(prompt)
         context = {}
 
         if choice == "service":

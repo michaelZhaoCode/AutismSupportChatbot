@@ -21,7 +21,7 @@ class LocationDatabase(ABC):
         pass
 
     @abstractmethod
-    def insert_region(self, region: str, region_type: str, parent_id: int, latitude: float, longitude: float) -> bool:
+    def insert_region(self, region: str, region_type: str, parent_id: int | None, latitude: float, longitude: float) -> bool:
         """
         Adds a region to the database. Returns if successful.
 
@@ -180,3 +180,35 @@ class LocationDatabase(ABC):
             dict: A dictionary representing the saved state of the database.
         """
         pass
+
+    @abstractmethod
+    def region_id(self, region: str, region_type: str) -> int | None:
+        """Returns the regionID of the given region if it is present in the database.
+        If not, return nothing.
+
+        Args:
+            region: The name of the region.
+            region_type: The type of the region.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def service_id(self, lat: float, lng: float) -> int | None:
+        """Returns the serviceID of the given service if it is present in the database.
+        If not, return nothing.
+        
+        Args:
+            lat: The latitude of the service's location.
+            lng: The longitude of the service's location.
+            """
+        raise NotImplementedError
+    
+class RegionAlreadyExistsException(Exception):
+    """Exception raised when attempting to insert a region that already exists in the database."""
+    pass
+
+class MissingParentRegionException(Exception):
+    """Exception raised when attempting to insert a region with a parent id that is not present
+    in the database.
+    """
+    pass

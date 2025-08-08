@@ -133,22 +133,22 @@ class LocationGUI(tk.Tk):
 
         for service in services:
             service_info = (
-                f"{service['ServiceID']}.".ljust(6) +
-                f"{service['ServiceType']}:".ljust(12) +
-                f"{service['ServiceName']}".ljust(20) +
-                f"Region: {service['RegionID']}".ljust(10) +
-                f"Lat: {service['Latitude']}, ".ljust(14) +
-                f"Lon: {service['Longitude']} ".ljust(14) +
-                f"Address: {service['Address'] or 'N/A'} ".ljust(30) +
-                f"Phone: {service['Phone'] or 'N/A'} ".ljust(20) +
-                f"Website: {service['Website'] or 'N/A'}"
+                f"{service.service_id}.".ljust(6) +
+                f"{service.service_type}:".ljust(12) +
+                f"{service.service_name}".ljust(20) +
+                f"Region: {service.region_id}".ljust(10) +
+                f"Lat: {service.latitude}, ".ljust(14) +
+                f"Lon: {service.longitude} ".ljust(14) +
+                f"Address: {service.address or 'N/A'} ".ljust(30) +
+                f"Phone: {service.phone or 'N/A'} ".ljust(20) +
+                f"Website: {service.website or 'N/A'}"
             )
 
             radio_button = ttk.Radiobutton(
                 self.scrollable_frame,
                 text=service_info,
                 variable=self.list_var,
-                value=service["ServiceID"],
+                value=service.service_id,
                 style="Monospace.TRadiobutton"
             )
             radio_button.pack(anchor="w", padx=10, pady=2)
@@ -236,7 +236,13 @@ class LocationGUI(tk.Tk):
             return
 
         # Call the database method to insert the new region
-        success = self.database.insert_region(name, region_type, parent_id, latitude, longitude)
+        try:
+            success = self.database.insert_region(name, region_type, parent_id, latitude, longitude)
+        except Exception as e:
+            # XXX: temporary solution to using exceptions to inform the caller what
+            #      kind of failure occurred
+            self.display_message(e + "Please try again.")
+            return
 
         if success:
             self.add_region_to_list(name, region_type, parent_id, latitude, longitude)
