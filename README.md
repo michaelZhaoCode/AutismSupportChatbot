@@ -13,6 +13,7 @@ Usage:
 8. if you want to add more files to the db (automatically recomputes the cluster) you can call `add_pdf`
 
 Env information needed:
-1. Cohere API Key
+1. OpenAI API Key
 2. MongoDB User
 3. MongoDB Password
+4. Google Maps API key
