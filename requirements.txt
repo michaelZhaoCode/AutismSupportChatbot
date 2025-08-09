@@ -9,6 +9,9 @@ openai
 openpyxl
 pytest
 pinecone
+aiohttp
+beautifulsoup4
+lxml
 
 
 # GUI packages
