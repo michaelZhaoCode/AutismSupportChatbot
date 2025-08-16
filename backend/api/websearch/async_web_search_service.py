@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 # Add PDF extraction support
 import io
 import PyPDF2
+from urllib.parse import urlparse
+from constants import ALLOWED_DOMAINS, ENABLE_DOMAIN_FILTERING
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -67,6 +69,45 @@ class AsyncWebSearchService:
             'Connection': 'keep-alive',
         }
         
+        # Domain filtering configuration
+        self.enable_domain_filtering = ENABLE_DOMAIN_FILTERING
+        self.allowed_domains = ALLOWED_DOMAINS
+
+    
+    def is_url_allowed(self, url: str) -> bool:
+        """
+        Check if a URL is from an allowed domain.
+        
+        Args:
+            url: The URL to check
+            
+        Returns:
+            True if domain filtering is disabled or URL is from allowed domain, False otherwise
+        """
+        # If domain filtering is disabled, allow all URLs
+        if not self.enable_domain_filtering:
+            return True
+        
+        try:
+            parsed_url = urlparse(url.lower())
+            domain = parsed_url.netloc
+            
+            # Remove 'www.' prefix for comparison
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            
+            # Check against allowed domains
+            for allowed_domain in self.allowed_domains:
+                allowed_domain_lower = allowed_domain.lower()
+                if domain in allowed_domain_lower or allowed_domain_lower in domain:
+                    return True
+            
+            logger.debug(f"URL blocked by domain filter: {url} (domain: {domain})")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error parsing URL for domain check: {url}, error: {str(e)}")
+            return False
     
     async def generate_search_queries(self, prompt: str, llm_generate_func: callable) -> list[str]:
         """
@@ -434,7 +475,7 @@ class AsyncWebSearchService:
         extraction_tasks = []
         for result in search_results:
             url = result.get('url', '')
-            if url:
+            if url and self.is_url_allowed(url):
                 task = self.extract_content_from_url(session, url)
                 extraction_tasks.append((task, result))
         
