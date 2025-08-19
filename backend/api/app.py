@@ -12,6 +12,7 @@ from api.servicehandler.botservice_servicehandler import BotserviceServiceHandle
 from api.locationdatabase.sqlitelocationdatabase import SQLiteLocationDatabase
 from db_funcs.file_storage import PDFStorageInterface
 from db_funcs.mongodb_chat_history_data_provider import MongoDBChatHistoryProvider
+from db_funcs.sqlite_feedback_data_provider import SQLiteFeedbackDataProvider
 from db_funcs.cluster_storage import ClusterStorageInterface
 from utils import setup_mongo_db
 from logger import setup_logger
@@ -36,9 +37,17 @@ mongo_db = setup_mongo_db()
 chat_history = MongoDBChatHistoryProvider(mongo_db)
 pdf_storage = PDFStorageInterface(mongo_db)
 cluster_storage = ClusterStorageInterface(mongo_db)
+feedback_storage = SQLiteFeedbackDataProvider("shared.db")
 service_handler = BotserviceServiceHandler(botservice, location_database)
 
-chatbot_obj = Chatbot(pdf_storage, chat_history, cluster_storage, botservice, service_handler)
+chatbot_obj = Chatbot(
+    pdf_storage=pdf_storage,
+    chat_history=chat_history,
+    cluster_storage=cluster_storage,
+    feedback_storage=feedback_storage,
+    botservice=botservice,
+    service_handler=service_handler
+)
 logger.info("Initialised all global app instances")
 
 app = Flask(__name__)
@@ -104,6 +113,29 @@ def retrieve_regions():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while retrieving regions'}), 500
+
+
+@app.route('/add_feedback', methods=['POST'])
+@cross_origin()
+def add_feedback():
+    try:
+        data = request.get_json()
+
+        # Validate required keys
+        if not all(key in data for key in ('username', 'feedback')):
+            logger.warning("/feedback: Request missing a required field")
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        username = data.get('username')
+        feedback = data.get('feedback')
+
+        chatbot_obj.add_feedback(username, feedback)
+
+        return jsonify({'response': 'Feedback received'}), 200
+
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return jsonify({'error': 'An error occurred while processing the request'}), 500
 
 
 if __name__ == "__main__":
