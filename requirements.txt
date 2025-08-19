@@ -9,7 +9,7 @@ scipy
 flask-cors
 openai
 openpyxl
-
+pytest
 
 # GUI packages
 requests~=2.32.3
