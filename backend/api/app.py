@@ -79,7 +79,7 @@ def generate():
         usertype = data.get('usertype')
         location = data.get('location', "")
         region_id = data.get('region_id', -1)
-        enable_web_search = data.get('enable_web_search', False)
+
 
         # Validate usertype
         if usertype.lower() not in {'child', 'adult', 'researcher'}:
@@ -92,8 +92,8 @@ def generate():
                 region_id = int(region_id)  # Attempt to cast to int
             except ValueError:
                 return jsonify({'error': 'region_id must be an integer'}), 400
-        # Call the chat function with web search option
-        response = chatbot_obj.chat(message, username, usertype, location, region_id, enable_web_search)
+        # Call the chat function - web search decision is now made automatically based on prompt analysis
+        response = chatbot_obj.chat(message, username, usertype, location, region_id)
 
         threading.Thread(target=chatbot_obj.update_user, args=(username, message, response["response"])).start()
 
