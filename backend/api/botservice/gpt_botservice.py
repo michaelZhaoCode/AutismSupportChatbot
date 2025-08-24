@@ -28,6 +28,25 @@ class GPTBotService(BotService):
     def __init__(self, openai_client: OpenAI):
         self.openai_client = openai_client
 
+    async def async_llm_generate(self, query_prompt: str, model: str = "gpt-3.5-turbo") -> str:
+        """
+        Async wrapper for OpenAI API calls for web search integration.
+        This wraps the synchronous OpenAI client in an async function.
+        """
+        import asyncio
+        
+        loop = asyncio.get_event_loop()
+        
+        def sync_call():
+            response = self.openai_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": query_prompt}],
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        
+        return await loop.run_in_executor(None, sync_call)
+
     def embed(self, texts: list[str]) -> list[list[float]]:
         """
         Embeds the given data using a GPT-based model.

@@ -1,19 +1,22 @@
-Flask==3.0.3
-numpy~=1.26.4
-pymongo==4.7.2
-PyMuPDF==1.24.4
-PyMuPDFb==1.24.3
-python-dotenv==1.0.1
-scikit-learn~=1.5.0
+Flask
+numpy
+PyMuPDF
+PyMuPDFb
+python-dotenv
 scipy
 flask-cors
 openai
 openpyxl
 pytest
+pinecone
+aiohttp
+beautifulsoup4
+lxml
+
 
 # GUI packages
-requests~=2.32.3
-pyttsx3~=2.90
-pillow~=10.4.0
+requests
+pyttsx3
+pillow
 geocoder
 streamlit
