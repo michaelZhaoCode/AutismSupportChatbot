@@ -8,6 +8,7 @@ import logging
 import os
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
+from db_funcs.vector_storage_provider import VectorStorageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def setup_pinecone():
     return index
 
 
-class UnifiedPineconeStorage:
+class UnifiedPineconeStorage(VectorStorageProvider):
     """
     Simple storage for chunks and their embeddings in Pinecone.
     """
