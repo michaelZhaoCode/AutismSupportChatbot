@@ -472,15 +472,6 @@ class Chatbot:
         """Clear the feedback storage."""
         self.feedback_storage.clear_database()
 
-    def delete_chunks(self, chunk_ids: List[str]) -> None:
-        """
-        Delete specific chunks by their IDs.
-        
-        Args:
-            chunk_ids: List of chunk IDs to delete.
-        """
-        self.storage.delete_chunks(chunk_ids)
-        logger.info(f"delete_chunks: Deleted {len(chunk_ids)} chunks")
     
     def get_storage_stats(self) -> dict:
         """
